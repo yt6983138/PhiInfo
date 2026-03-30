@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using AssetsTools.NET;
 using AssetsTools.NET.Extra;
 using PhiInfo.Core.Type;
@@ -145,5 +147,13 @@ public class PhiInfoAsset(CatalogParser catalogParser, Func<string, Stream> getB
             throw new Exception($"Asset {path} has invalid resolved bundle path.");
 
         return getBundleStreamFunc(bundlePath.Value.ResolvedKey.Value.StringValue);
+    }
+
+    public List<string> List()
+    {
+        return catalogParser.GetAll()
+            .Where(e => e.Value.ResolvedKey != null && e.Key.StringValue is not null)
+            .Select(v => v.Key.StringValue!)
+            .ToList();
     }
 }

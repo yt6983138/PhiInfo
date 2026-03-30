@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using System.Text;
 using System.Text.Json;
@@ -84,24 +85,26 @@ namespace PhiInfo.Core
 
     public sealed class CatalogParser
     {
-        private readonly List<CatalogEntry> _entries;
+        private readonly ImmutableList<CatalogEntry> _entries;
 
         public CatalogParser(
             byte[] keyData,
             byte[] bucketData,
             byte[] entryData)
         {
-            _entries = Parse(keyData, bucketData, entryData);
+            _entries = Parse(keyData, bucketData, entryData).ToImmutableList();
         }
 
         public CatalogParser(Stream json)
         {
-            var data = JsonSerializer.Deserialize(json, JsonContext.Default.Catalog);
+            var data = JsonSerializer.Deserialize(json, JsonContext.Default.Catalog) ??
+                       throw new InvalidOperationException();
 
             _entries = Parse(
                 Convert.FromBase64String(data.m_KeyDataString),
                 Convert.FromBase64String(data.m_BucketDataString),
-                Convert.FromBase64String(data.m_EntryDataString));
+                Convert.FromBase64String(data.m_EntryDataString)).ToImmutableList();
+            ;
         }
 
         public IReadOnlyList<CatalogEntry> GetAll()

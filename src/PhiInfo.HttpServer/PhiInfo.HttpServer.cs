@@ -7,6 +7,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
+using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -16,6 +18,7 @@ using System.Text.Unicode;
 using System.Threading;
 using System.Threading.Tasks;
 using AssetsTools.NET.Texture;
+using global.PhiInfo.HttpServer.Type;
 using SixLabors.ImageSharp.Formats.Bmp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
@@ -28,6 +31,7 @@ namespace PhiInfo
     [JsonSerializable(typeof(List<string>))]
     [JsonSerializable(typeof(List<ChapterInfo>))]
     [JsonSerializable(typeof(AllInfo))]
+    [JsonSerializable(typeof(ServerInfo))]
     public partial class JsonContext : JsonSerializerContext
     {
     }
@@ -76,6 +80,7 @@ namespace PhiInfo
                 ["/asset/text"] = async r => (GetAssetText(r.QueryString["path"]), "text/plain"),
                 ["/asset/music"] = async r => (GetAssetMusic(r.QueryString["path"]), "audio/ogg"),
                 ["/asset/image"] = async r => (GetAssetImage(r.QueryString["path"]), "image/bmp"),
+                ["/asset/list"] = async _ => (SerializeJson(_phiAsset.List(), _jsonContext.ListString), jsonStream),
                 ["/info/songs"] = async _ =>
                     (SerializeJson(_phiInfo.ExtractSongInfo(), _jsonContext.ListSongInfo), jsonStream),
                 ["/info/collection"] = async _ =>
@@ -88,7 +93,8 @@ namespace PhiInfo
                     (SerializeJson(_phiInfo.ExtractChapters(), _jsonContext.ListChapterInfo), jsonStream),
                 ["/info/all"] = async _ => (SerializeJson(_phiInfo.ExtractAll(), _jsonContext.AllInfo), jsonStream),
                 ["/info/version"] = async _ =>
-                    (Encoding.UTF8.GetBytes(_phiInfo.GetPhiVersion().ToString()), "text/plain")
+                    (Encoding.UTF8.GetBytes(_phiInfo.GetPhiVersion().ToString()), "text/plain"),
+                ["/info/server"] = async _ => (SerializeJson(GetServerInfo(), _jsonContext.ServerInfo), jsonStream),
             };
         }
 
@@ -168,6 +174,20 @@ namespace PhiInfo
         protected virtual void Log(string msg)
         {
             Console.WriteLine(msg);
+        }
+
+        protected virtual AppInfo GetAppInfo()
+        {
+            return new AppInfo("Unknown", "Unknown");
+        }
+
+        private ServerInfo GetServerInfo()
+        {
+            var rid = RuntimeInformation.RuntimeIdentifier;
+            var version = typeof(HttpServer).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+                ?.InformationalVersion ?? "Unknown";
+            var appInfo = GetAppInfo();
+            return new ServerInfo(version, rid, appInfo);
         }
 
         private Stream SetupLevel22(ShuaZip zip)

@@ -1,10 +1,22 @@
 ﻿using System;
 using System.CommandLine;
 using System.IO;
+using System.Reflection;
 using System.Threading;
+using global.PhiInfo.HttpServer.Type;
 
 namespace PhiInfo.CLI
 {
+    public class CliHttpServer(string apkPath, Stream cldbStream) : HttpServer(apkPath, cldbStream)
+    {
+        protected override AppInfo GetAppInfo()
+        {
+            var version = typeof(CliHttpServer).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+                ?.InformationalVersion ?? "Unknown";
+            return new AppInfo(version, "CLI");
+        }
+    }
+
     internal class Program
     {
         private static int Main(string[] args)
@@ -67,7 +79,7 @@ namespace PhiInfo.CLI
                 }
 
                 using var cldb = File.OpenRead(classDataFile.FullName);
-                using var server = new HttpServer(apkFile.FullName, cldb);
+                using var server = new CliHttpServer(apkFile.FullName, cldb);
 
                 _ = server.Start(port, host);
 

@@ -25,8 +25,9 @@
         <SupportedOSPlatformVersion>29</SupportedOSPlatformVersion>
         <ApplicationTitle>PhiInfo.Android</ApplicationTitle>
         <ApplicationId>dev.phigros_labs.PhiInfo</ApplicationId>
+        <GitHash>dev</GitHash>
         <ApplicationVersion>1</ApplicationVersion>
-        <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+        <ApplicationDisplayVersion>1.0.0+$(GitHash)</ApplicationDisplayVersion>
         <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     </PropertyGroup>
 </Project>

@@ -5,16 +5,22 @@ using Android.OS;
 using Android.Util;
 using System;
 using System.IO;
+using global.PhiInfo.HttpServer.Type;
 
 namespace PhiInfo.Android
 {
-    public class AndroidHttpServer(string apkPath, Stream cldbStream) : HttpServer(apkPath, cldbStream)
+    public class AndroidHttpServer(string apkPath, Stream cldbStream, string version) : HttpServer(apkPath, cldbStream)
     {
         private const string Tag = "PhiInfoHttpServer";
 
         protected override void Log(string msg)
         {
             global::Android.Util.Log.Info(Tag, msg);
+        }
+
+        protected override AppInfo GetAppInfo()
+        {
+            return new AppInfo(version, "Android");
         }
     }
 
@@ -58,10 +64,16 @@ namespace PhiInfo.Android
 
                 var appInfo = PackageManager?.GetApplicationInfo(TargetPkg, 0);
                 var apkPath = appInfo?.SourceDir ?? throw new Exception("apk路径为null");
+                if (PackageName is null)
+                {
+                    throw new Exception("包名为null");
+                }
+
+                var versionName = PackageManager?.GetPackageInfo(PackageName, 0)?.VersionName ?? "Unknown";
 
                 var cldbStream = Assets?.Open("classdata.tpk") ?? throw new Exception("cldb资源找不到");
 
-                _server = new AndroidHttpServer(apkPath, cldbStream);
+                _server = new AndroidHttpServer(apkPath, cldbStream, versionName);
 
                 _ = _server.Start(41669, "127.0.0.1");
 
