@@ -45,7 +45,7 @@ jobs:
 
     - name: Build PhiInfo.CLI
       run: | 
-        dotnet build ./src/PhiInfo.CLI/PhiInfo.CLI.csproj --configuration Release --no-restore -p:GitHash=${{ env.SHA7 }}
+        dotnet build ./src/PhiInfo.CLI/PhiInfo.CLI.csproj --configuration Release --no-restore -p:GitHash=$SHA7
         cp uncompressed.tpk ./src/PhiInfo.CLI/bin/Release/net10.0/classdata.tpk
 
     - name: Upload PhiInfo.CLI artifacts
@@ -56,7 +56,7 @@ jobs:
 
     - name: Publish PhiInfo.CLI-Android
       run: | 
-        dotnet publish ./src/PhiInfo.CLI/PhiInfo.CLI.csproj --configuration Release -r linux-bionic-arm64 -p:GitHash=${{ env.SHA7 }}
+        dotnet publish ./src/PhiInfo.CLI/PhiInfo.CLI.csproj --configuration Release -r linux-bionic-arm64 -p:GitHash=$SHA7
         cp uncompressed.tpk ./src/PhiInfo.CLI/bin/Release/net10.0/linux-bionic-arm64/publish/classdata.tpk
 
     - name: Upload PhiInfo.CLI-Android
@@ -69,7 +69,7 @@ jobs:
       run: |
         mkdir -p ./src/PhiInfo.Android/Assets/
         cp uncompressed.tpk ./src/PhiInfo.Android/Assets/classdata.tpk
-        dotnet publish ./src/PhiInfo.Android/PhiInfo.Android.csproj --configuration Release -r android-arm64 -p:GitHash=${{ env.SHA7 }}
+        dotnet publish ./src/PhiInfo.Android/PhiInfo.Android.csproj --configuration Release -r android-arm64 -p:GitHash=$SHA7
 
     - name: Upload PhiInfo.Android
       uses: actions/upload-artifact@v7
