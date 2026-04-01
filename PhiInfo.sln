@@ -3,8 +3,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.37111.16
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhiInfo.Android", "PhiInfo.Android\PhiInfo.Android.csproj", "{37AEC5BC-5AF6-A94A-DBB1-634CB156DC9F}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhiInfo.CLI", "PhiInfo.CLI\PhiInfo.CLI.csproj", "{DC634177-D135-C648-B100-FD0F1D40A989}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhiInfo.HttpServer", "PhiInfo.HttpServer\PhiInfo.HttpServer.csproj", "{8BCC5B7E-68E5-94A3-8E3B-CAB8316DEDBF}"
@@ -19,10 +17,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{37AEC5BC-5AF6-A94A-DBB1-634CB156DC9F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{37AEC5BC-5AF6-A94A-DBB1-634CB156DC9F}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{37AEC5BC-5AF6-A94A-DBB1-634CB156DC9F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{37AEC5BC-5AF6-A94A-DBB1-634CB156DC9F}.Release|Any CPU.Build.0 = Release|Any CPU
 		{DC634177-D135-C648-B100-FD0F1D40A989}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{DC634177-D135-C648-B100-FD0F1D40A989}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DC634177-D135-C648-B100-FD0F1D40A989}.Release|Any CPU.ActiveCfg = Release|Any CPU
