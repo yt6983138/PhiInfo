@@ -365,5 +365,7 @@ FodyWeavers.xsd
 # rider
 .idea
 
+# test data
 /PhiInfo.CLI/classdata.tpk
 /PhiInfo.CLI/output/
+/PhiInfo.Tests/TestData/
