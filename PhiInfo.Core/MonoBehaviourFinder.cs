@@ -3,55 +3,45 @@ using AssetsTools.NET.Cpp2IL;
 using AssetsTools.NET.Extra;
 using LibCpp2IL;
 using LibCpp2IL.Metadata;
+using System.Diagnostics.CodeAnalysis;
 
 namespace PhiInfo.Core;
 
-public partial class PhiInfo : IDisposable
+public class MonoBehaviourFinder : IDisposable
 {
 	private bool _disposed;
-	private readonly AssetsFile _ggmInst = new();
-	private readonly AssetsFile _level0Inst = new();
-	private readonly AssetsFile _level22Inst = new();
+
+	private readonly AssetsFile _globalGameManagers = new();
 	private readonly ClassDatabaseFile _classDatabase;
 
-	private readonly Cpp2IlTempGenerator _tempGen;
+	private readonly AssetsFileReader _globalGameManagersReader;
 
-	private readonly List<AssetsFileReader> _readers = [];
+	private readonly Cpp2IlTempGenerator _templateGenerator;
 
-	private static readonly string Lang = "chinese";
-	private static readonly int LangId = 40;
-
-	public PhiInfo(
-		Stream globalGameManagers,
-		Stream level0,
-		Stream level22,
-		byte[] il2CppSo,
-		byte[] globalMetadata,
-		Stream cldb)
+	public MonoBehaviourFinder(
+		Stream globalGameManagersAsset,
+		byte[] il2CppBinary,
+		byte[] globalMetadataBinary,
+		Stream classDataTPK)
 	{
-		AssetsFileReader ggmReader = new(globalGameManagers);
-		this._readers.Add(ggmReader);
-		this._ggmInst.Read(ggmReader);
-
-		AssetsFileReader level0Reader = new(level0);
-		this._readers.Add(level0Reader);
-		this._level0Inst.Read(level0Reader);
-
-		AssetsFileReader level22Reader = new(level22);
-		this._readers.Add(level22Reader);
-		this._level22Inst.Read(level22Reader);
+		AssetsFileReader globalGameManagersReader = new(globalGameManagersAsset);
+		this._globalGameManagersReader = globalGameManagersReader;
+		this._globalGameManagers.Read(globalGameManagersReader);
 
 		ClassPackageFile classPackage = new();
-		using (AssetsFileReader cldbReader = new(cldb))
-		{
-			classPackage.Read(cldbReader);
-		}
+		using AssetsFileReader classDataTPKReader = new(classDataTPK);
+		classPackage.Read(classDataTPKReader);
 
-		this._classDatabase = classPackage.GetClassDatabase(this._ggmInst.Metadata.UnityVersion);
+		this._classDatabase = classPackage.GetClassDatabase(this._globalGameManagers.Metadata.UnityVersion);
 
-		this._tempGen = new Cpp2IlTempGenerator(globalMetadata, il2CppSo);
-		this._tempGen.SetUnityVersion(new UnityVersion(this._ggmInst.Metadata.UnityVersion));
-		this._tempGen.InitializeCpp2IL();
+		this._templateGenerator = new Cpp2IlTempGenerator(globalMetadataBinary, il2CppBinary);
+		this._templateGenerator.SetUnityVersion(new UnityVersion(this._globalGameManagers.Metadata.UnityVersion));
+		this._templateGenerator.InitializeCpp2IL();
+	}
+
+	~MonoBehaviourFinder()
+	{
+		this.Dispose();
 	}
 
 	public void Dispose()
@@ -59,18 +49,11 @@ public partial class PhiInfo : IDisposable
 		if (this._disposed) return;
 		this._disposed = true;
 
-		foreach (AssetsFileReader r in this._readers)
-		{
-			r.Dispose();
-		}
+		GC.SuppressFinalize(this);
 
-		this._readers.Clear();
-
-		this._level0Inst.Close();
-		this._level22Inst.Close();
-		this._ggmInst.Close();
-
-		this._tempGen.Dispose();
+		this._globalGameManagersReader.Dispose();
+		this._globalGameManagers.Close();
+		this._templateGenerator.Dispose();
 	}
 
 	private AssetTypeValueField GetBaseField(
@@ -86,27 +69,6 @@ public partial class PhiInfo : IDisposable
 
 			if (template == null)
 				throw new Exception($"Failed to build template for type {info.TypeId}");
-
-			RefTypeManager refMan = new();
-			refMan.FromTypeTree(file.Metadata);
-
-			return template.MakeValue(file.Reader, offset, refMan);
-		}
-	}
-
-	internal static AssetTypeValueField GetBaseField(AssetsFile file, AssetFileInfo info)
-	{
-		lock (file.Reader)
-		{
-			long offset = info.GetAbsoluteByteOffset(file);
-
-			if (!file.Metadata.TypeTreeEnabled)
-				throw new Exception($"Failed to build template for type {info.TypeId}");
-			TypeTreeType tt = file.Metadata.FindTypeTreeTypeByID(info.TypeId, info.GetScriptIndex(file));
-			if (tt == null || tt.Nodes.Count <= 0)
-				throw new Exception($"Failed to build template for type {info.TypeId}");
-			AssetTypeTemplateField template = new();
-			template.FromTypeTree(tt);
 
 			RefTypeManager refMan = new();
 			refMan.FromTypeTree(file.Metadata);
@@ -162,53 +124,51 @@ public partial class PhiInfo : IDisposable
 			AssetTypeValueField mbBase = baseField.MakeValue(reader, absByteStart, tempRefMan);
 			AssetPPtr scriptPtr = AssetPPtr.FromField(mbBase["m_Script"]);
 
-			if (!scriptPtr.IsNull())
+			if (scriptPtr.IsNull())
+				goto OutAndReset;
+
+			// 确定 MonoScript 所在的文件
+			AssetsFile monoScriptFile;
+			if (scriptPtr.FileId == 0)
 			{
-				// 确定 MonoScript 所在的文件
-				AssetsFile monoScriptFile;
-				if (scriptPtr.FileId == 0)
-				{
-					monoScriptFile = file;
-				}
-				else if (scriptPtr.FileId == 1)
-				{
-					monoScriptFile = this._ggmInst;
-				}
-				else
-				{
-					throw new Exception("Unsupported MonoScript FileID");
-				}
-
-				AssetFileInfo monoInfo = monoScriptFile.GetAssetInfo(scriptPtr.PathId);
-				if (monoInfo != null)
-				{
-					if (this.GetMonoScriptInfo(monoScriptFile, monoInfo,
-							out string? assemblyName, out string? nameSpace, out string? className))
-					{
-						if (assemblyName == null || className == null || nameSpace == null)
-							throw new Exception("MonoScript info incomplete");
-
-						// 移除 .dll 扩展名
-						if (assemblyName.EndsWith(".dll"))
-						{
-							assemblyName = assemblyName.Substring(0, assemblyName.Length - 4);
-						}
-
-						AssetTypeTemplateField newBase = this._tempGen.GetTemplateField(
-								baseField,
-								assemblyName,
-								nameSpace,
-								className,
-								new UnityVersion(file.Metadata.UnityVersion));
-
-						if (newBase != null)
-						{
-							baseField = newBase;
-						}
-					}
-				}
+				monoScriptFile = file;
+			}
+			else if (scriptPtr.FileId == 1)
+			{
+				monoScriptFile = this._globalGameManagers;
+			}
+			else
+			{
+				throw new InvalidDataException("Unsupported MonoScript FileID");
 			}
 
+			AssetFileInfo monoInfo = monoScriptFile.GetAssetInfo(scriptPtr.PathId);
+
+			if (monoInfo is null)
+				goto OutAndReset;
+
+			if (!this.GetMonoScriptInfo(monoScriptFile, monoInfo, out string? assemblyName, out string? nameSpace, out string? className))
+				goto OutAndReset;
+
+			// 移除 .dll 扩展名
+			if (assemblyName.EndsWith(".dll"))
+			{
+				assemblyName = assemblyName[..^4];
+			}
+
+			AssetTypeTemplateField newBase = this._templateGenerator.GetTemplateField(
+					baseField,
+					assemblyName,
+					nameSpace,
+					className,
+					new UnityVersion(file.Metadata.UnityVersion));
+
+			if (newBase != null)
+			{
+				baseField = newBase;
+			}
+
+		OutAndReset:
 			// 恢复原始位置
 			reader.Position = originalPosition;
 		}
@@ -216,7 +176,7 @@ public partial class PhiInfo : IDisposable
 		return baseField;
 	}
 
-	public uint GetPhiVersion()
+	public static uint GetPhiVersion()
 	{
 		Il2CppMetadata meta = LibCpp2IlMain.TheMetadata
 					   ?? throw new Exception("il2cpp 未初始化");
@@ -245,9 +205,9 @@ public partial class PhiInfo : IDisposable
 	private bool GetMonoScriptInfo(
 		AssetsFile file,
 		AssetFileInfo info,
-		out string? assemblyName,
+		[NotNullWhen(true)] out string? assemblyName,
 		out string? nameSpace,
-		out string? className)
+		[NotNullWhen(true)] out string? className)
 	{
 		assemblyName = null;
 		nameSpace = null;
@@ -275,6 +235,47 @@ public partial class PhiInfo : IDisposable
 		nameSpace = valueField["m_Namespace"]?.AsString;
 		className = valueField["m_ClassName"]?.AsString;
 
-		return !string.IsNullOrEmpty(assemblyName) && !string.IsNullOrEmpty(className);
+		return !string.IsNullOrEmpty(assemblyName) && !string.IsNullOrEmpty(className) && nameSpace is not null;
+	}
+
+	public AssetTypeValueField? TryFindMonoBehaviour(AssetsFile file, string name)
+	{
+		foreach (AssetFileInfo? info in file.AssetInfos)
+		{
+			if (info.TypeId != (int)AssetClassID.MonoBehaviour)
+				continue;
+
+			AssetTypeValueField baseField = this.GetBaseField(file, info, false);
+
+			AssetTypeValueField scriptField = baseField["m_Script"];
+			if (scriptField == null)
+				continue;
+
+			long msId = scriptField["m_PathID"].AsLong;
+			if (msId == 0)
+				continue;
+
+			AssetFileInfo monoInfo = this._globalGameManagers.GetAssetInfo(msId);
+			if (monoInfo == null)
+				continue;
+
+			AssetTypeValueField msBase = this.GetBaseField(this._globalGameManagers, monoInfo, false);
+			string? msName = msBase["m_Name"]?.AsString;
+
+			if (msName == name)
+			{
+				return this.GetBaseField(file, info, true);
+			}
+		}
+
+		return null;
+	}
+
+	public AssetTypeValueField FindMonoBehaviour(AssetsFile file, string name)
+	{
+		AssetTypeValueField? result = this.TryFindMonoBehaviour(file, name);
+		if (result is null)
+			throw new ArgumentException($"Requested MonoBehaviour not found in the provided file.", nameof(name));
+		return result;
 	}
 }

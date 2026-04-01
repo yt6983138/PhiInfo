@@ -1,18 +1,100 @@
 using AssetsTools.NET;
-using PhiInfo.Core.Type;
+using PhiInfo.Core.Models.Raw;
 
 namespace PhiInfo.Core;
 
-public partial class PhiInfo
+public partial class PhigrosRawAssetExtractor : IDisposable
 {
+
+	private readonly AssetsFile _level0;
+	private readonly AssetsFile? _level22;
+	private readonly MonoBehaviourFinder _monoBehaviourFinder;
+
+	private readonly AssetsFileReader _level0Reader;
+	private readonly AssetsFileReader? _level22Reader;
+
+	public bool Disposed { get; private set; }
+
+	public Language ExtractLanguage { get; set; } = Language.Chinese;
+
+	/// <summary>
+	/// all stream must be readable and seekable
+	/// </summary>
+	/// <param name="globalGameManagers"></param>
+	/// <param name="level0"></param>
+	/// <param name="level22">need to be merged from split files, if not supplied collection cannot be extracted</param>
+	/// <param name="il2CppSo"></param>
+	/// <param name="globalMetadata"></param>
+	/// <param name="classDataTPK"></param>
+	public PhigrosRawAssetExtractor(
+		Stream globalGameManagers,
+		Stream level0,
+		Stream? level22,
+		byte[] il2CppSo,
+		byte[] globalMetadata,
+		Stream classDataTPK)
+	{
+		AssetsFileReader level0Reader = new(level0);
+		this._level0Reader = level0Reader;
+		this._level0 = new();
+		this._level0.Read(level0Reader);
+
+		if (level22 is not null)
+		{
+			AssetsFileReader level22Reader = new(level22);
+			this._level22Reader = level22Reader;
+			this._level22 = new();
+			this._level22.Read(level22Reader);
+		}
+
+		this._monoBehaviourFinder = new MonoBehaviourFinder(
+			globalGameManagers,
+			il2CppSo,
+			globalMetadata,
+			classDataTPK
+		);
+	}
+	~PhigrosRawAssetExtractor()
+	{
+		this.Dispose();
+	}
+
+	public static PhigrosRawAssetExtractor FromApk(Stream apk, Stream? obb, Stream classDataTPK)
+	{
+		PhigrosAssetHelper.GetRawExtractionRequiredData(apk,
+			out Stream globalGameManagers,
+			out Stream level0,
+			out byte[] il2CppSo,
+			out byte[] globalMetadata);
+		return new PhigrosRawAssetExtractor(
+			globalGameManagers,
+			level0,
+			obb is null ? null : PhigrosAssetHelper.GetLevel22FromObb(obb),
+			il2CppSo,
+			globalMetadata,
+			classDataTPK
+		);
+	}
+
+	public void Dispose()
+	{
+		if (this.Disposed) return;
+		this.Disposed = true;
+
+		GC.SuppressFinalize(this);
+
+		this._level0Reader.Dispose();
+		this._level22Reader?.Dispose();
+		this._level0.Close();
+		this._level22?.Close();
+		this._monoBehaviourFinder.Dispose();
+	}
+
 	public List<SongInfo> ExtractSongInfo()
 	{
 		List<SongInfo> result = [];
 
-		AssetTypeValueField gameInfoField = this.FindMonoBehaviour(
-			this._level0Inst,
-				"GameInformation"
-			) ?? throw new Exception("GameInformation MonoBehaviour not found");
+		AssetTypeValueField gameInfoField = this._monoBehaviourFinder.FindMonoBehaviour(this._level0, "GameInformation");
 
 		AssetTypeValueField songField = gameInfoField["song"];
 		AssetTypeValueField comboArray = gameInfoField["songAllCombos"]["Array"];
@@ -80,12 +162,12 @@ public partial class PhiInfo
 
 	public List<Folder> ExtractCollection()
 	{
+		if (this._level22 is null)
+			throw new InvalidOperationException("Level22 asset is required to extract collection data");
+
 		List<Folder> result = [];
 
-		AssetTypeValueField collectionField = this.FindMonoBehaviour(
-			this._level22Inst,
-				"SaturnOSControl"
-			) ?? throw new Exception("SaturnOSControl MonoBehaviour not found");
+		AssetTypeValueField collectionField = this._monoBehaviourFinder.FindMonoBehaviour(this._level22, "SaturnOSControl");
 
 		AssetTypeValueField folders = collectionField["folders"]["Array"];
 
@@ -102,18 +184,18 @@ public partial class PhiInfo
 				files.Add(new FileItem(
 					file["key"].AsString,
 					file["subIndex"].AsInt,
-					file["name"][Lang].AsString,
+					file["name"][this.ExtractLanguage.GetStringId()].AsString,
 					file["date"].AsString,
-					file["supervisor"][Lang].AsString,
+					file["supervisor"][this.ExtractLanguage.GetStringId()].AsString,
 					file["category"].AsString,
-					file["content"][Lang].AsString,
-					file["properties"][Lang].AsString
+					file["content"][this.ExtractLanguage.GetStringId()].AsString,
+					file["properties"][this.ExtractLanguage.GetStringId()].AsString
 				));
 			}
 
 			result.Add(new Folder(
-				folder["title"][Lang].AsString,
-				folder["subTitle"][Lang].AsString,
+				folder["title"][this.ExtractLanguage.GetStringId()].AsString,
+				folder["subTitle"][this.ExtractLanguage.GetStringId()].AsString,
 				folder["cover"].AsString,
 				files
 			));
@@ -126,10 +208,7 @@ public partial class PhiInfo
 	{
 		List<Avatar> result = [];
 
-		AssetTypeValueField avatarField = this.FindMonoBehaviour(
-			this._level0Inst,
-				"GetCollectionControl"
-			) ?? throw new Exception("GetCollectionControl MonoBehaviour not found");
+		AssetTypeValueField avatarField = this._monoBehaviourFinder.FindMonoBehaviour(this._level0, "GetCollectionControl");
 
 		AssetTypeValueField avatarsArray = avatarField["avatars"]["Array"];
 
@@ -149,17 +228,14 @@ public partial class PhiInfo
 	{
 		List<string> result = [];
 
-		AssetTypeValueField tipsField = this.FindMonoBehaviour(
-			this._level0Inst,
-				"TipsProvider"
-			) ?? throw new Exception("TipsProvider MonoBehaviour not found");
+		AssetTypeValueField tipsField = this._monoBehaviourFinder.FindMonoBehaviour(this._level0, "TipsProvider");
 
 		AssetTypeValueField tipsArray = tipsField["tips"]["Array"];
 
 		for (int i = 0; i < tipsArray.Children.Count; i++)
 		{
 			AssetTypeValueField tipsLang = tipsArray[i];
-			if (tipsLang["language"].AsInt == LangId)
+			if (tipsLang["language"].AsInt == (int)this.ExtractLanguage)
 			{
 				for (int j = 0; j < tipsLang["tips"]["Array"].Children.Count; j++)
 				{
@@ -177,10 +253,7 @@ public partial class PhiInfo
 	{
 		List<ChapterInfo> result = [];
 
-		AssetTypeValueField chapterField = this.FindMonoBehaviour(
-			this._level0Inst,
-				"GameInformation"
-			) ?? throw new Exception("GameInformation MonoBehaviour not found");
+		AssetTypeValueField chapterField = this._monoBehaviourFinder.FindMonoBehaviour(this._level0, "GameInformation");
 
 		AssetTypeValueField chaptersArray = chapterField["chapters"]["Array"];
 
@@ -203,9 +276,9 @@ public partial class PhiInfo
 		return result;
 	}
 
-	public AllInfo ExtractAll()
+	public PhigrosExtractedDataCollection ExtractAll()
 	{
-		return new AllInfo(
+		return new PhigrosExtractedDataCollection(
 			this.ExtractSongInfo(),
 			this.ExtractCollection(),
 			this.ExtractAvatars(),

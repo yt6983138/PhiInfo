@@ -5,7 +5,7 @@ using Fmod5Sharp.CodecRebuilders;
 using Fmod5Sharp.FmodTypes;
 using global.PhiInfo.HttpServer.Type;
 using PhiInfo.Core;
-using PhiInfo.Core.Type;
+using PhiInfo.Core.Models.Raw;
 using Shua.Zip;
 using SixLabors.ImageSharp.Formats.Bmp;
 using SixLabors.ImageSharp.PixelFormats;
@@ -20,6 +20,8 @@ using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
 using System.Text.Unicode;
 
+using ImageSharpImage = SixLabors.ImageSharp.Image;
+
 namespace PhiInfo;
 
 [JsonSerializable(typeof(List<SongInfo>))]
@@ -27,7 +29,7 @@ namespace PhiInfo;
 [JsonSerializable(typeof(List<Avatar>))]
 [JsonSerializable(typeof(List<string>))]
 [JsonSerializable(typeof(List<ChapterInfo>))]
-[JsonSerializable(typeof(AllInfo))]
+[JsonSerializable(typeof(PhigrosExtractedDataCollection))]
 [JsonSerializable(typeof(ServerInfo))]
 public partial class JsonContext : JsonSerializerContext
 {
@@ -40,8 +42,8 @@ public class HttpServer : IDisposable
 		Encoder = JavaScriptEncoder.Create(UnicodeRanges.All),
 	});
 
-	private readonly PhiInfoAsset _phiAsset;
-	private readonly Core.PhiInfo _phiInfo;
+	private readonly AddressableBundleExtractor _phiAsset;
+	private readonly Core.PhigrosRawAssetExtractor _phiInfo;
 	protected readonly ShuaZip Zip;
 	private HttpListener? _listener;
 	private CancellationTokenSource? _cts;
@@ -58,10 +60,10 @@ public class HttpServer : IDisposable
 		using Stream catalogStream = this.Zip.OpenFileStreamByName("assets/aa/catalog.json");
 		CatalogParser catalogParser = new(catalogStream);
 
-		this._phiAsset = new PhiInfoAsset(catalogParser,
+		this._phiAsset = new PhigrosAssetExtractor(catalogParser,
 				(bundleName) => { return this.Zip.OpenFileStreamByName("assets/aa/Android/" + bundleName); });
 
-		this._phiInfo = new Core.PhiInfo(
+		this._phiInfo = new Core.PhigrosRawAssetExtractor(
 			this.Zip.OpenFileStreamByName("assets/bin/Data/globalgamemanagers.assets"),
 			this.Zip.OpenFileStreamByName("assets/bin/Data/level0"),
 			this.SetupLevel22(this.Zip),
@@ -77,7 +79,7 @@ public class HttpServer : IDisposable
 			["/asset/text"] = async r => (this.GetAssetText(r.QueryString["path"]), "text/plain"),
 			["/asset/music"] = async r => (this.GetAssetMusic(r.QueryString["path"]), "audio/ogg"),
 			["/asset/image"] = async r => (this.GetAssetImage(r.QueryString["path"]), "image/bmp"),
-			["/asset/list"] = async _ => (SerializeJson(this._phiAsset.List(), this._jsonContext.ListString), jsonStream),
+			["/asset/list"] = async _ => (SerializeJson(this._phiAsset.ListAllAssetPathsInCatalog(), this._jsonContext.ListString), jsonStream),
 			["/info/songs"] = async _ =>
 				(SerializeJson(this._phiInfo.ExtractSongInfo(), this._jsonContext.ListSongInfo), jsonStream),
 			["/info/collection"] = async _ =>
@@ -90,7 +92,7 @@ public class HttpServer : IDisposable
 				(SerializeJson(this._phiInfo.ExtractChapters(), this._jsonContext.ListChapterInfo), jsonStream),
 			["/info/all"] = async _ => (SerializeJson(this._phiInfo.ExtractAll(), this._jsonContext.AllInfo), jsonStream),
 			["/info/version"] = async _ =>
-				(Encoding.UTF8.GetBytes(this._phiInfo.GetPhiVersion().ToString()), "text/plain"),
+				(Encoding.UTF8.GetBytes(Core.PhigrosRawAssetExtractor.GetPhiVersion().ToString()), "text/plain"),
 			["/info/server"] = async _ => (SerializeJson(this.GetServerInfo(), this._jsonContext.ServerInfo), jsonStream),
 		};
 	}
@@ -134,20 +136,20 @@ public class HttpServer : IDisposable
 	private byte[] GetAssetText(string? path)
 	{
 		if (string.IsNullOrEmpty(path)) throw new ArgumentException("Path is empty");
-		Text textData = this._phiAsset.GetText(path);
-		return Encoding.UTF8.GetBytes(textData.content);
+		Text textData = this._phiAsset.GetTextRaw(path);
+		return Encoding.UTF8.GetBytes(textData.Content);
 	}
 
 	private byte[] GetAssetMusic(string? path)
 	{
 		if (string.IsNullOrEmpty(path)) throw new ArgumentException("Path is empty");
 		Music raw = this._phiAsset.GetMusicRaw(path);
-		FmodSoundBank bank = FsbLoader.LoadFsbFromByteArray(raw.data);
+		FmodSoundBank bank = FsbLoader.LoadFsbFromByteArray(raw.Data);
 		byte[] music = FmodVorbisRebuilder.RebuildOggFile(bank.Samples[0]);
 		return music;
 	}
 
-	private static SixLabors.ImageSharp.Image LoadEtc(
+	private static ImageSharpImage LoadEtc(
 		ReadOnlySpan<byte> input,
 		int width,
 		int height,
@@ -156,12 +158,12 @@ public class HttpServer : IDisposable
 		if (hasAlpha)
 		{
 			EtcDecoder.DecompressETC2A8<ColorBGRA<byte>, byte>(input, width, height, out byte[]? data);
-			return SixLabors.ImageSharp.Image.LoadPixelData<Bgra32>(data, width, height);
+			return ImageSharpImage.LoadPixelData<Bgra32>(data, width, height);
 		}
 		else
 		{
 			EtcDecoder.DecompressETC<ColorBGRA<byte>, byte>(input, width, height, out byte[]? data);
-			return SixLabors.ImageSharp.Image.LoadPixelData<Bgra32>(data, width, height);
+			return ImageSharpImage.LoadPixelData<Bgra32>(data, width, height);
 		}
 	}
 
@@ -169,23 +171,23 @@ public class HttpServer : IDisposable
 	{
 		if (string.IsNullOrEmpty(path)) throw new ArgumentException("Path is empty");
 		Image raw = this._phiAsset.GetImageRaw(path);
-		using SixLabors.ImageSharp.Image img = raw.format switch
+		using ImageSharpImage img = raw.Format switch
 		{
-			3 => SixLabors.ImageSharp.Image.LoadPixelData<Rgb24>(
-				raw.data,
-				(int)raw.width,
-				(int)raw.height),
+			3 => ImageSharpImage.LoadPixelData<Rgb24>(
+				raw.Data,
+				(int)raw.Width,
+				(int)raw.Height),
 
-			4 => SixLabors.ImageSharp.Image.LoadPixelData<Rgba32>(
-				raw.data,
-				(int)raw.width,
-				(int)raw.height),
+			4 => ImageSharpImage.LoadPixelData<Rgba32>(
+				raw.Data,
+				(int)raw.Width,
+				(int)raw.Height),
 
-			34 => LoadEtc(raw.data, (int)raw.width, (int)raw.height, false),
+			34 => LoadEtc(raw.Data, (int)raw.Width, (int)raw.Height, false),
 
-			47 => LoadEtc(raw.data, (int)raw.width, (int)raw.height, true),
+			47 => LoadEtc(raw.Data, (int)raw.Width, (int)raw.Height, true),
 
-			_ => throw new NotSupportedException($"Unknown format: {raw.format}")
+			_ => throw new NotSupportedException($"Unknown format: {raw.Format}")
 		};
 
 		img.Mutate(x => x.Flip(FlipMode.Vertical));

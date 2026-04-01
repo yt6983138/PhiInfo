@@ -17,7 +17,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\PhiInfo.HttpServer\PhiInfo.HttpServer.csproj" />
+		<!--<ProjectReference Include="..\PhiInfo.HttpServer\PhiInfo.HttpServer.csproj" />-->
 	</ItemGroup>
 
 	<ItemGroup>
