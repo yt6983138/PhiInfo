@@ -1,43 +1,42 @@
 using AssetsTools.NET;
 using AssetsTools.NET.Extra;
 
-namespace PhiInfo.Core
+namespace PhiInfo.Core;
+
+public partial class PhiInfo
 {
-    public partial class PhiInfo
-    {
-        private AssetTypeValueField? FindMonoBehaviour(
-            AssetsFile file,
-            string name)
-        {
-            foreach (var info in file.AssetInfos)
-            {
-                if (info.TypeId != (int)AssetClassID.MonoBehaviour)
-                    continue;
+	private AssetTypeValueField? FindMonoBehaviour(
+		AssetsFile file,
+		string name)
+	{
+		foreach (AssetFileInfo? info in file.AssetInfos)
+		{
+			if (info.TypeId != (int)AssetClassID.MonoBehaviour)
+				continue;
 
-                var baseField = GetBaseField(file, info, false);
+			AssetTypeValueField baseField = this.GetBaseField(file, info, false);
 
-                var scriptField = baseField["m_Script"];
-                if (scriptField == null)
-                    continue;
+			AssetTypeValueField scriptField = baseField["m_Script"];
+			if (scriptField == null)
+				continue;
 
-                var msId = scriptField["m_PathID"].AsLong;
-                if (msId == 0)
-                    continue;
+			long msId = scriptField["m_PathID"].AsLong;
+			if (msId == 0)
+				continue;
 
-                var monoInfo = _ggmInst.GetAssetInfo(msId);
-                if (monoInfo == null)
-                    continue;
+			AssetFileInfo monoInfo = this._ggmInst.GetAssetInfo(msId);
+			if (monoInfo == null)
+				continue;
 
-                var msBase = GetBaseField(_ggmInst, monoInfo, false);
-                var msName = msBase["m_Name"]?.AsString;
+			AssetTypeValueField msBase = this.GetBaseField(this._ggmInst, monoInfo, false);
+			string? msName = msBase["m_Name"]?.AsString;
 
-                if (msName == name)
-                {
-                    return GetBaseField(file, info, true);
-                }
-            }
+			if (msName == name)
+			{
+				return this.GetBaseField(file, info, true);
+			}
+		}
 
-            return null;
-        }
-    }
+		return null;
+	}
 }
