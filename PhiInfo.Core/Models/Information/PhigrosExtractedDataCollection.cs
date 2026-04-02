@@ -1,4 +1,4 @@
-namespace PhiInfo.Core.Models.Raw;
+namespace PhiInfo.Core.Models.Information;
 
 public record PhigrosExtractedDataCollection(
 	List<SongInfo> Songs,

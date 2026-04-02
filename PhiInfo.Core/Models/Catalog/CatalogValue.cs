@@ -1,4 +1,4 @@
-﻿namespace PhiInfo.Core.Catalog;
+﻿namespace PhiInfo.Core.Models.Catalog;
 public readonly struct CatalogValue
 {
 	public bool IsReference { get; }

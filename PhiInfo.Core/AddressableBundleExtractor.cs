@@ -1,6 +1,6 @@
 using AssetsTools.NET;
 using AssetsTools.NET.Extra;
-using PhiInfo.Core.Catalog;
+using PhiInfo.Core.Models.Catalog;
 using PhiInfo.Core.Models.Raw;
 
 namespace PhiInfo.Core;

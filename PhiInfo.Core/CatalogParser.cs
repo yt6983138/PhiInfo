@@ -1,9 +1,11 @@
 ﻿using PhigrosLibraryCSharp;
+using PhiInfo.Core.Catalog;
+using PhiInfo.Core.Models.Catalog;
 using System.Collections.Immutable;
 using System.Text;
 using System.Text.Json;
 
-namespace PhiInfo.Core.Catalog;
+namespace PhiInfo.Core;
 
 public class CatalogParser
 {
@@ -36,9 +38,7 @@ public class CatalogParser
 		foreach (CatalogEntry entry in this._entries)
 		{
 			if (KeysEqual(entry.Key, key))
-			{
 				return entry.Value;
-			}
 		}
 
 		return null;
@@ -107,8 +107,8 @@ public class CatalogParser
 			for (int j = 1; j < entryCount; j++)
 				bucketReader.ReadInt();
 
-			int entryStart = 4 + (28 * entryPos);
-			ushort raw = (ushort)(entryData[entryStart + 8] ^ (entryData[entryStart + 9] << 8));
+			int entryStart = 4 + 28 * entryPos;
+			ushort raw = (ushort)(entryData[entryStart + 8] ^ entryData[entryStart + 9] << 8);
 			CatalogValue value = CatalogValue.FromRaw(raw);
 
 			table.Add(new CatalogEntry(key, value));

@@ -1,5 +1,5 @@
 using AssetsTools.NET;
-using PhiInfo.Core.Models.Raw;
+using PhiInfo.Core.Models.Information;
 
 namespace PhiInfo.Core;
 
@@ -59,7 +59,7 @@ public partial class PhigrosRawAssetExtractor : IDisposable
 		this.Dispose();
 	}
 
-	public static PhigrosRawAssetExtractor FromApk(Stream apk, Stream? obb, Stream classDataTPK)
+	public static PhigrosRawAssetExtractor FromApkAndObb(Stream apk, Stream? obb, Stream classDataTPK)
 	{
 		PhigrosAssetHelper.GetRawExtractionRequiredData(apk,
 			out Stream globalGameManagers,
@@ -100,40 +100,38 @@ public partial class PhigrosRawAssetExtractor : IDisposable
 		AssetTypeValueField comboArray = gameInfoField["songAllCombos"]["Array"];
 
 		Dictionary<string, List<int>> comboDict = [];
-		for (int i = 0; i < comboArray.Children.Count; i++)
+		foreach (AssetTypeValueField combo in comboArray)
 		{
-			AssetTypeValueField combo = comboArray[i];
-			string songId = combo["songsId"].AsString;
-			List<int> allComboList = [];
 			AssetTypeValueField allComboField = combo["allComboNum"]["Array"];
-			for (int j = 0; j < allComboField.Children.Count; j++)
-				allComboList.Add(allComboField[j].AsInt);
+
+			List<int> allComboList = allComboField
+				.Select(x => x.AsInt)
+				.ToList();
+
+			string songId = combo["songsId"].AsString;
 			comboDict[songId] = allComboList;
 		}
 
-		for (int i = 0; i < songField.Children.Count; i++)
+		foreach (AssetTypeValueField songArrayField in songField)
 		{
-			AssetTypeValueField songArray = songField[i]["Array"];
-			for (int j = 0; j < songArray.Children.Count; j++)
+			foreach (AssetTypeValueField song in songArrayField["Array"])
 			{
-				AssetTypeValueField song = songArray[j];
 				string songId = song["songsId"].AsString;
 
-				List<int> allComboNum = comboDict.TryGetValue(songId, out List<int>? value) ? value : [];
 				AssetTypeValueField levelsArray = song["levels"]["Array"];
 				AssetTypeValueField chartersArray = song["charter"]["Array"];
 				AssetTypeValueField difficultiesArray = song["difficulty"]["Array"];
 
 				Dictionary<string, SongLevel> levelsDict = [];
-
-				for (int k = 0; k < difficultiesArray.Children.Count; k++)
+				List<int> allComboNum = comboDict.TryGetValue(songId, out List<int>? value) ? value : [];
+				for (int i = 0; i < difficultiesArray.Children.Count; i++)
 				{
-					double diff = difficultiesArray[k].AsDouble;
+					double diff = difficultiesArray[i].AsDouble;
 					if (diff == 0) continue;
 
-					string levelName = levelsArray[k].AsString;
-					string charter = chartersArray[k].AsString;
-					int allCombo = k < allComboNum.Count ? allComboNum[k] : 0;
+					string levelName = levelsArray[i].AsString;
+					string charter = chartersArray[i].AsString;
+					int allCombo = i < allComboNum.Count ? allComboNum[i] : 0; // TODO: fix some songs have combo count of 0
 
 					levelsDict[levelName] = new SongLevel(
 						charter,
@@ -165,23 +163,13 @@ public partial class PhigrosRawAssetExtractor : IDisposable
 		if (this._level22 is null)
 			throw new InvalidOperationException("Level22 asset is required to extract collection data");
 
-		List<Folder> result = [];
-
 		AssetTypeValueField collectionField = this._monoBehaviourFinder.FindMonoBehaviour(this._level22, "SaturnOSControl");
 
-		AssetTypeValueField folders = collectionField["folders"]["Array"];
-
-		for (int i = 0; i < folders.Children.Count; i++)
+		List<Folder> result = [];
+		foreach (AssetTypeValueField folder in collectionField["folders"]["Array"])
 		{
-			AssetTypeValueField folder = folders[i];
-			AssetTypeValueField filesArray = folder["files"]["Array"];
-			List<FileItem> files = [];
-
-			for (int j = 0; j < filesArray.Children.Count; j++)
-			{
-				AssetTypeValueField file = filesArray[j];
-
-				files.Add(new FileItem(
+			List<FileItem> files = folder["files"]["Array"]
+				.Select(file => new FileItem(
 					file["key"].AsString,
 					file["subIndex"].AsInt,
 					file["name"][this.ExtractLanguage.GetStringId()].AsString,
@@ -190,8 +178,7 @@ public partial class PhigrosRawAssetExtractor : IDisposable
 					file["category"].AsString,
 					file["content"][this.ExtractLanguage.GetStringId()].AsString,
 					file["properties"][this.ExtractLanguage.GetStringId()].AsString
-				));
-			}
+				)).ToList();
 
 			result.Add(new Folder(
 				folder["title"][this.ExtractLanguage.GetStringId()].AsString,
@@ -206,47 +193,29 @@ public partial class PhigrosRawAssetExtractor : IDisposable
 
 	public List<Avatar> ExtractAvatars()
 	{
-		List<Avatar> result = [];
-
 		AssetTypeValueField avatarField = this._monoBehaviourFinder.FindMonoBehaviour(this._level0, "GetCollectionControl");
 
-		AssetTypeValueField avatarsArray = avatarField["avatars"]["Array"];
-
-		for (int i = 0; i < avatarsArray.Children.Count; i++)
-		{
-			AssetTypeValueField avatar = avatarsArray[i];
-			result.Add(new Avatar(
-				avatar["name"].AsString,
-				avatar["addressableKey"].AsString
-			));
-		}
-
-		return result;
+		return avatarField["avatars"]["Array"]
+			.Select(x => new Avatar(x["name"].AsString, x["addressableKey"].AsString))
+			.ToList();
 	}
 
 	public List<string> ExtractTips()
 	{
-		List<string> result = [];
 
 		AssetTypeValueField tipsField = this._monoBehaviourFinder.FindMonoBehaviour(this._level0, "TipsProvider");
 
 		AssetTypeValueField tipsArray = tipsField["tips"]["Array"];
+		AssetTypeValueField? tipsTargetLang = tipsArray
+			.FirstOrDefault(x => x["language"].AsInt == (int)this.ExtractLanguage);
 
-		for (int i = 0; i < tipsArray.Children.Count; i++)
-		{
-			AssetTypeValueField tipsLang = tipsArray[i];
-			if (tipsLang["language"].AsInt == (int)this.ExtractLanguage)
-			{
-				for (int j = 0; j < tipsLang["tips"]["Array"].Children.Count; j++)
-				{
-					result.Add(tipsLang["tips"]["Array"][j].AsString);
-				}
+		if (tipsTargetLang is null)
+			return [];
 
-				break;
-			}
-		}
+		return tipsTargetLang["tips"]["Array"]
+			.Select(x => x.AsString)
+			.ToList();
 
-		return result;
 	}
 
 	public List<ChapterInfo> ExtractChapters()
@@ -257,18 +226,13 @@ public partial class PhigrosRawAssetExtractor : IDisposable
 
 		AssetTypeValueField chaptersArray = chapterField["chapters"]["Array"];
 
-		for (int i = 0; i < chaptersArray.Children.Count; i++)
+		foreach (AssetTypeValueField chapter in chaptersArray)
 		{
-			AssetTypeValueField chapter = chaptersArray[i];
 			string code = chapter["chapterCode"].AsString;
 			AssetTypeValueField songInfo = chapter["songInfo"];
 			string banner = songInfo["banner"].AsString;
 			AssetTypeValueField songsArray = songInfo["songs"]["Array"];
-			List<string> songs = [];
-			for (int j = 0; j < songsArray.Children.Count; j++)
-			{
-				songs.Add(songsArray[j]["songsId"].AsString);
-			}
+			List<string> songs = songsArray.Select(x => x["songsId"].AsString).ToList();
 
 			result.Add(new ChapterInfo(code, banner, songs));
 		}

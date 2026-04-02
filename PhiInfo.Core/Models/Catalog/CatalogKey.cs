@@ -1,4 +1,4 @@
-﻿namespace PhiInfo.Core.Catalog;
+﻿namespace PhiInfo.Core.Models.Catalog;
 public enum CatalogKeyType : byte
 {
 	Utf8String = 0,
