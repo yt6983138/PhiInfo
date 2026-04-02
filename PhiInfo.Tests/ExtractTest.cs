@@ -1,5 +1,5 @@
 ﻿using PhiInfo.Core;
-using PhiInfo.Core.Models.Raw;
+using PhiInfo.Core.Models.Information;
 
 namespace PhiInfo.Tests;
 
@@ -9,7 +9,9 @@ public sealed class ExtractTest
 	[TestMethod]
 	public void TestExtraction()
 	{
-		using PhigrosRawAssetExtractor rawExtractor = PhigrosRawAssetExtractor.FromApk(
+		Environment.CurrentDirectory = Path.Combine(Environment.CurrentDirectory, "..", "..", "..");
+
+		using PhigrosRawAssetExtractor rawExtractor = PhigrosRawAssetExtractor.FromApkAndObb(
 			File.OpenRead("./TestData/base.apk"),
 			File.OpenRead("./TestData/obb.obb"),
 			File.OpenRead("./TestData/classdata.tpk"));
