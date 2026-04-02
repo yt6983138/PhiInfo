@@ -5,20 +5,11 @@ VisualStudioVersion = 17.14.37111.16
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhiInfo.CLI", "PhiInfo.CLI\PhiInfo.CLI.csproj", "{DC634177-D135-C648-B100-FD0F1D40A989}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhiInfo.HttpServer", "PhiInfo.HttpServer\PhiInfo.HttpServer.csproj", "{8BCC5B7E-68E5-94A3-8E3B-CAB8316DEDBF}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhiInfo.Core", "PhiInfo.Core\PhiInfo.Core.csproj", "{105ACF9D-45D1-5F7F-B0C2-7F1764E341CB}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shua.Zip", "Shua.Zip\Shua.Zip.csproj", "{0F500A0F-4162-8867-4B74-01688FDE1FB7}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhiInfo.Tests", "PhiInfo.Tests\PhiInfo.Tests.csproj", "{A214891B-862A-4592-B01E-A8BE0D2587A2}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8EC462FD-D22E-90A8-E5CE-7E832BA40C5D}"
-	ProjectSection(SolutionItems) = preProject
-		.gitignore = .gitignore
-		LICENSE.txt = LICENSE.txt
-		README.md = README.md
-	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -30,18 +21,10 @@ Global
 		{DC634177-D135-C648-B100-FD0F1D40A989}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DC634177-D135-C648-B100-FD0F1D40A989}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DC634177-D135-C648-B100-FD0F1D40A989}.Release|Any CPU.Build.0 = Release|Any CPU
-		{8BCC5B7E-68E5-94A3-8E3B-CAB8316DEDBF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{8BCC5B7E-68E5-94A3-8E3B-CAB8316DEDBF}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{8BCC5B7E-68E5-94A3-8E3B-CAB8316DEDBF}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{8BCC5B7E-68E5-94A3-8E3B-CAB8316DEDBF}.Release|Any CPU.Build.0 = Release|Any CPU
 		{105ACF9D-45D1-5F7F-B0C2-7F1764E341CB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{105ACF9D-45D1-5F7F-B0C2-7F1764E341CB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{105ACF9D-45D1-5F7F-B0C2-7F1764E341CB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{105ACF9D-45D1-5F7F-B0C2-7F1764E341CB}.Release|Any CPU.Build.0 = Release|Any CPU
-		{0F500A0F-4162-8867-4B74-01688FDE1FB7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{0F500A0F-4162-8867-4B74-01688FDE1FB7}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{0F500A0F-4162-8867-4B74-01688FDE1FB7}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{0F500A0F-4162-8867-4B74-01688FDE1FB7}.Release|Any CPU.Build.0 = Release|Any CPU
 		{A214891B-862A-4592-B01E-A8BE0D2587A2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{A214891B-862A-4592-B01E-A8BE0D2587A2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A214891B-862A-4592-B01E-A8BE0D2587A2}.Release|Any CPU.ActiveCfg = Release|Any CPU
