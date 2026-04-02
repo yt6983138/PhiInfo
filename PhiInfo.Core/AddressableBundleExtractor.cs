@@ -1,10 +1,16 @@
 using AssetsTools.NET;
 using AssetsTools.NET.Extra;
 using PhiInfo.Core.Models.Catalog;
-using PhiInfo.Core.Models.Raw;
+using PhiInfo.Core.Models.RawAsset;
+using System.Globalization;
 
 namespace PhiInfo.Core;
 
+/// <summary>
+/// stream must be seekable and readable, will be disposed after use
+/// </summary>
+/// <param name="path"></param>
+/// <returns></returns>
 public delegate Stream BundleStreamFactory(string path);
 public class AddressableBundleExtractor
 {
@@ -20,10 +26,26 @@ public class AddressableBundleExtractor
 	private readonly CatalogParser _catalogParser;
 	private readonly BundleStreamFactory _bundleStreamFactory;
 
+	/// <summary>
+	/// note: obb may not contain all bundles, need to merge patch files for complete extraction
+	/// </summary>
+	/// <param name="catalogParser"></param>
+	/// <param name="bundleStreamFactory"></param>
 	public AddressableBundleExtractor(CatalogParser catalogParser, BundleStreamFactory bundleStreamFactory)
 	{
 		this._catalogParser = catalogParser;
 		this._bundleStreamFactory = bundleStreamFactory;
+	}
+
+	/// <summary>
+	/// note: obb may not contain all bundles, need to merge patch files for complete extraction
+	/// </summary>
+	/// <param name="obb"></param>
+	/// <returns></returns>
+	public static AddressableBundleExtractor FromObb(Stream obb)
+	{
+		CatalogParser catalogParser = CatalogParser.FromObb(obb);
+		return new(catalogParser, PhigrosAssetHelper.CreateBundleFactoryFromObb(obb));
 	}
 
 	private static byte[] ReadAbsolutePositionRange(Stream baseStream, long offset, int size)
@@ -46,6 +68,7 @@ public class AddressableBundleExtractor
 
 	private MappedAssetBundle FindAddressableByCatalogPath(string path)
 	{
+		// this stream will be disposed by the AssetBundleFile dispose method, which is called in MappedAssetBundle dispose method
 		Stream file = this.GetBundleStreamByCatalogPath(path);
 
 		AssetsFileReader reader = new(file);
@@ -85,7 +108,17 @@ public class AddressableBundleExtractor
 			.Select(v => v.Key.StringValue!)
 			.ToList();
 	}
-	public Image GetImageRaw(string path)
+	/// <summary>
+	/// stripping out assets with only hexadecimal names, which seemed to be unused or unimportant for asset extraction purposes
+	/// </summary>
+	/// <returns></returns>
+	public List<string> ListMeaningfulAssetPathsInCatalog()
+	{
+		return this.ListAllAssetPathsInCatalog()
+			.Where(x => !UInt128.TryParse(x, NumberStyles.HexNumber, null, out UInt128 _))
+			.ToList();
+	}
+	public UnityImage GetImageRaw(string path)
 	{
 		using MappedAssetBundle bundle = this.FindAddressableByCatalogPath(path);
 
@@ -106,14 +139,14 @@ public class AddressableBundleExtractor
 				byte[] data = ReadAbsolutePositionRange(bundle.BundleFile.DataReader.BaseStream, dataFileOffset + dataOffset,
 					(int)dataSize);
 
-				Image image = new(format, width, height, data);
+				UnityImage image = new(format, width, height, data);
 				return image;
 			}
 		}
 
 		throw new ArgumentException("No Texture2D found in the asset bundle.", nameof(path));
 	}
-	public Music GetMusicRaw(string path)
+	public UnityMusic GetMusicRaw(string path)
 	{
 		using MappedAssetBundle bundle = this.FindAddressableByCatalogPath(path);
 
@@ -130,13 +163,13 @@ public class AddressableBundleExtractor
 				byte[] data = ReadAbsolutePositionRange(bundle.BundleFile.DataReader.BaseStream, dataFileOffset + dataOffset,
 					(int)dataSize);
 
-				return new Music(length, data);
+				return new UnityMusic(length, data);
 			}
 		}
 
-		throw new Exception("No AudioClip found in the asset bundle.");
+		throw new ArgumentException("No AudioClip found in the asset bundle.", nameof(path));
 	}
-	public Text GetTextRaw(string path)
+	public UnityText GetTextRaw(string path)
 	{
 		using MappedAssetBundle bundle = this.FindAddressableByCatalogPath(path);
 
@@ -146,11 +179,11 @@ public class AddressableBundleExtractor
 			{
 				AssetTypeValueField baseField = bundle.InfoAssetFile.GetBaseField(info);
 				string text = baseField["m_Script"].AsString;
-				return new Text(text);
+				return new UnityText(text);
 			}
 		}
 
-		throw new Exception("No TextAsset found in the asset bundle.");
+		throw new ArgumentException("No TextAsset found in the asset bundle.", nameof(path));
 	}
 	#endregion
 }

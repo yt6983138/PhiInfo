@@ -48,7 +48,7 @@ public static class PhigrosAssetHelper
 		ZipArchive zip = new(obb, ZipArchiveMode.Read, true);
 		return BuildCompleteLevel22FromZip(zip);
 	}
-	public static void GetRawExtractionRequiredData(Stream apk,
+	public static void GetInformationExtractionRequiredData(Stream apk,
 		out Stream globalGameManagers,
 		out Stream level0,
 		out byte[] il2CppSo,
@@ -65,6 +65,27 @@ public static class PhigrosAssetHelper
 		level0 = new MemoryStream(level0Data);
 	}
 
+	public static Stream GetCatalogStreamFromObb(Stream obb)
+	{
+		ZipArchive zip = new(obb, ZipArchiveMode.Read, true);
+		return zip.GetEntryOrThrow("assets/aa/catalog.json").Open();
+	}
+
+	public static BundleStreamFactory CreateBundleFactoryFromObb(Stream obb)
+	{
+		ZipArchive zip = new(obb, ZipArchiveMode.Read, true);
+		return path =>
+		{
+			using Stream zipStream = zip.GetEntryOrThrow($"assets/aa/Android/{path}").Open();
+
+			MemoryStream stream = new();
+			zipStream.CopyTo(stream);
+			stream.Position = 0;
+
+			return stream;
+		};
+	}
+
 	private static byte[] OpenAndReadAllBytes(this ZipArchiveEntry entry)
 	{
 		Stream stream = entry.Open();
@@ -77,7 +98,7 @@ public static class PhigrosAssetHelper
 	{
 		ZipArchiveEntry? entry = zip.GetEntry(name);
 		if (entry is null)
-			throw new FileNotFoundException($"Required Unity asset missing from APK: {name}");
+			throw new FileNotFoundException($"Required Unity asset missing from package: {name}");
 		return entry;
 	}
 }

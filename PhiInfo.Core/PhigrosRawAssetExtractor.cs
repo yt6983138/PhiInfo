@@ -3,7 +3,10 @@ using PhiInfo.Core.Models.Information;
 
 namespace PhiInfo.Core;
 
-public partial class PhigrosRawAssetExtractor : IDisposable
+/// <summary>
+/// this class is NOT thread and async safe
+/// </summary>
+public class PhigrosRawAssetExtractor : IDisposable // TODO: check if this class can be made thread and async safe, this class calls some static cpp2il methods so it blow up
 {
 
 	private readonly AssetsFile _level0;
@@ -61,7 +64,7 @@ public partial class PhigrosRawAssetExtractor : IDisposable
 
 	public static PhigrosRawAssetExtractor FromApkAndObb(Stream apk, Stream? obb, Stream classDataTPK)
 	{
-		PhigrosAssetHelper.GetRawExtractionRequiredData(apk,
+		PhigrosAssetHelper.GetInformationExtractionRequiredData(apk,
 			out Stream globalGameManagers,
 			out Stream level0,
 			out byte[] il2CppSo,

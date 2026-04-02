@@ -2,8 +2,10 @@
 using PhiInfo.Core.Catalog;
 using PhiInfo.Core.Models.Catalog;
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace PhiInfo.Core;
 
@@ -20,18 +22,44 @@ public class CatalogParser
 		this._entries = ParseEntries(keyData, bucketData, entryData).ToImmutableList();
 	}
 
-	public CatalogParser(Stream json)
+	private static void EnsureCatalogModelNotNull([NotNull] RawCatalogModel? obj, string paramName)
 	{
-		RawCatalogModel data = JsonSerializer.Deserialize(json, CatalogModelJsonContext.Default.RawCatalogModel) ??
-					   throw new ArgumentException("Invalid json supplied.", nameof(json));
-
-		this._entries = ParseEntries(
-				Convert.FromBase64String(data.KeyDataString),
-				Convert.FromBase64String(data.BucketDataString),
-				Convert.FromBase64String(data.EntryDataString))
-			.ToImmutableList();
+		if (obj is null)
+			throw new ArgumentNullException("Invalid json supplied.", paramName);
 	}
 
+	public static CatalogParser FromBase64Strings(string keyDataString, string bucketDataString, string entryDataString)
+	{
+		return new(Convert.FromBase64String(keyDataString),
+				Convert.FromBase64String(bucketDataString),
+				Convert.FromBase64String(entryDataString));
+	}
+	public static CatalogParser FromJson(Stream json)
+	{
+		RawCatalogModel? data = JsonSerializer.Deserialize(json, CatalogModelJsonContext.Default.RawCatalogModel);
+		EnsureCatalogModelNotNull(data, nameof(json));
+
+		return FromBase64Strings(data.KeyDataString, data.BucketDataString, data.EntryDataString);
+	}
+	public static CatalogParser FromJson(string json)
+	{
+		RawCatalogModel? data = JsonSerializer.Deserialize(json, CatalogModelJsonContext.Default.RawCatalogModel);
+		EnsureCatalogModelNotNull(data, nameof(json));
+
+		return FromBase64Strings(data.KeyDataString, data.BucketDataString, data.EntryDataString);
+	}
+	public static CatalogParser FromJson(JsonObject obj)
+	{
+		RawCatalogModel? data = obj.Deserialize(CatalogModelJsonContext.Default.RawCatalogModel);
+		EnsureCatalogModelNotNull(data, nameof(obj));
+
+		return FromBase64Strings(data.KeyDataString, data.BucketDataString, data.EntryDataString);
+	}
+	public static CatalogParser FromObb(Stream obb)
+	{
+		using Stream catalogStream = PhiInfo.Core.PhigrosAssetHelper.GetCatalogStreamFromObb(obb);
+		return FromJson(catalogStream);
+	}
 
 	public CatalogValue? Get(CatalogKey key)
 	{
@@ -107,8 +135,8 @@ public class CatalogParser
 			for (int j = 1; j < entryCount; j++)
 				bucketReader.ReadInt();
 
-			int entryStart = 4 + 28 * entryPos;
-			ushort raw = (ushort)(entryData[entryStart + 8] ^ entryData[entryStart + 9] << 8);
+			int entryStart = 4 + (28 * entryPos);
+			ushort raw = (ushort)(entryData[entryStart + 8] ^ (entryData[entryStart + 9] << 8));
 			CatalogValue value = CatalogValue.FromRaw(raw);
 
 			table.Add(new CatalogEntry(key, value));

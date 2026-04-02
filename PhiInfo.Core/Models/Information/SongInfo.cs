@@ -19,5 +19,21 @@ public record SongInfo(
 	string Illustrator,
 	double PreviewStartTimeSeconds,
 	double PreviewEndTimeSeconds,
-	Dictionary<string, SongLevel> Levels
-);
+	Dictionary<string, SongLevel> Levels)
+{
+
+	public string LowResolutionIllustrationAddressablePath => $"Assets/Tracks/{this.Id}/IllustrationLowRes.jpg";
+	public string IllustrationAddressablePath => $"Assets/Tracks/{this.Id}/Illustration.jpg";
+	public string BlurIllustrationAddressablePath => $"Assets/Tracks/{this.Id}/IllustrationBlur.jpg";
+
+	public string MusicAddressablePath => $"Assets/Tracks/{this.Id}/music.wav";
+
+	public string GetChartAddressablePath(string difficulty) // TODO: make difficulty an enum
+	{
+		if (!this.Levels.ContainsKey(difficulty))
+		{
+			throw new ArgumentException($"This song does not have requested difficulty.", nameof(difficulty));
+		}
+		return $"Assets/Tracks/{this.Id}/Chart_{difficulty}.json";
+	}
+}

@@ -6,7 +6,7 @@ using Fmod5Sharp.FmodTypes;
 using global.PhiInfo.HttpServer.Type;
 using PhiInfo.Core;
 using PhiInfo.Core.Models.Information;
-using PhiInfo.Core.Models.Raw;
+using PhiInfo.Core.Models.RawAsset;
 using Shua.Zip;
 using SixLabors.ImageSharp.Formats.Bmp;
 using SixLabors.ImageSharp.PixelFormats;
@@ -137,14 +137,14 @@ public class HttpServer : IDisposable
 	private byte[] GetAssetText(string? path)
 	{
 		if (string.IsNullOrEmpty(path)) throw new ArgumentException("Path is empty");
-		Text textData = this._phiAsset.GetTextRaw(path);
+		UnityText textData = this._phiAsset.GetTextRaw(path);
 		return Encoding.UTF8.GetBytes(textData.Content);
 	}
 
 	private byte[] GetAssetMusic(string? path)
 	{
 		if (string.IsNullOrEmpty(path)) throw new ArgumentException("Path is empty");
-		Music raw = this._phiAsset.GetMusicRaw(path);
+		UnityMusic raw = this._phiAsset.GetMusicRaw(path);
 		FmodSoundBank bank = FsbLoader.LoadFsbFromByteArray(raw.Data);
 		byte[] music = FmodVorbisRebuilder.RebuildOggFile(bank.Samples[0]);
 		return music;
@@ -171,7 +171,7 @@ public class HttpServer : IDisposable
 	private byte[] GetAssetImage(string? path)
 	{
 		if (string.IsNullOrEmpty(path)) throw new ArgumentException("Path is empty");
-		Image raw = this._phiAsset.GetImageRaw(path);
+		UnityImage raw = this._phiAsset.GetImageRaw(path);
 		using ImageSharpImage img = raw.Format switch
 		{
 			3 => ImageSharpImage.LoadPixelData<Rgb24>(
