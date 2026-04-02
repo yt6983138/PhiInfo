@@ -17,7 +17,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\PhiInfo.Core\PhiInfo.Core.csproj" />
+	  <ProjectReference Include="..\PhiInfo.CLI\PhiInfo.CLI.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>

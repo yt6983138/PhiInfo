@@ -8,24 +8,15 @@ namespace PhiInfo.Tests;
 [TestClass]
 public sealed class ExtractTest
 {
-	private static volatile bool _hasSetWorkingDirectory = false;
-
-	private static void EnsureWorkingDirectory()
-	{
-		if (_hasSetWorkingDirectory) return;
-		_hasSetWorkingDirectory = true;
-		Environment.CurrentDirectory = Path.Combine(Environment.CurrentDirectory, "..", "..", "..");
-	}
-
 	[TestMethod]
 	public void Information()
 	{
-		EnsureWorkingDirectory();
+		Helper.EnsureWorkingDirectory();
 
 		using PhigrosRawAssetExtractor rawExtractor = PhigrosRawAssetExtractor.FromApkAndObb(
-			File.OpenRead("./TestData/base.apk"),
-			File.OpenRead("./TestData/obb.obb"),
-			File.OpenRead("./TestData/classdata.tpk"));
+			File.OpenRead(Helper.TestApkPath),
+			File.OpenRead(Helper.TestObbPath),
+			File.OpenRead(Helper.TestClassDataTPKPath));
 
 		PhigrosExtractedDataCollection info = rawExtractor.ExtractAll();
 		Console.WriteLine(info);
@@ -33,14 +24,14 @@ public sealed class ExtractTest
 	[TestMethod]
 	public void Assets()
 	{
-		EnsureWorkingDirectory();
+		Helper.EnsureWorkingDirectory();
 
 		//using PhigrosRawAssetExtractor rawExtractor = PhigrosRawAssetExtractor.FromApkAndObb(
-		//	File.OpenRead("./TestData/base.apk"),
-		//	File.OpenRead("./TestData/obb.obb"),
-		//	File.OpenRead("./TestData/classdata.tpk"));
+		//	File.OpenRead(Helper.TestApkPath),
+		//	File.OpenRead(Helper.TestObbPath),
+		//	File.OpenRead(Helper.TestClassDataTPKPath));
 
-		AddressableBundleExtractor assetExtractor = AddressableBundleExtractor.FromObb(File.OpenRead("./TestData/obb.obb"));
+		AddressableBundleExtractor assetExtractor = AddressableBundleExtractor.FromObb(File.OpenRead(Helper.TestObbPath));
 
 		Console.WriteLine("Assets in catalog:");
 		Console.WriteLine(string.Join('\n', assetExtractor.ListMeaningfulAssetPathsInCatalog()));
