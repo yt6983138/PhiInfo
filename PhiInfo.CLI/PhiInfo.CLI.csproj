@@ -15,13 +15,13 @@
 		<InformationalVersion>$(Version)+$(GitHash)</InformationalVersion>
 		<IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
 	</PropertyGroup>
-
-	<ItemGroup>
-		<!--<ProjectReference Include="..\PhiInfo.HttpServer\PhiInfo.HttpServer.csproj" />-->
-	</ItemGroup>
-
+	
 	<ItemGroup>
 		<PackageReference Include="System.CommandLine" Version="2.0.5" />
+	</ItemGroup>
+	
+	<ItemGroup>
+	  <ProjectReference Include="..\PhiInfo.Core\PhiInfo.Core.csproj" />
 	</ItemGroup>
 
 	<Import Project="PhiInfo.CLI.targets" />

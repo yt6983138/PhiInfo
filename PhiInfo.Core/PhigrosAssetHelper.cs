@@ -1,4 +1,6 @@
-﻿using System.IO.Compression;
+﻿using Fmod5Sharp.CodecRebuilders;
+using Fmod5Sharp.FmodTypes;
+using System.IO.Compression;
 
 namespace PhiInfo.Core;
 public static class PhigrosAssetHelper
@@ -84,6 +86,11 @@ public static class PhigrosAssetHelper
 
 			return stream;
 		};
+	}
+
+	public static byte[] ToOggBytes(this FmodSoundBank bank)
+	{
+		return FmodVorbisRebuilder.RebuildOggFile(bank.Samples[0]);
 	}
 
 	private static byte[] OpenAndReadAllBytes(this ZipArchiveEntry entry)
