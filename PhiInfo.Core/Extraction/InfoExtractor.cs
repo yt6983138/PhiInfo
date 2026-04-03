@@ -1,12 +1,14 @@
 using AssetsTools.NET;
+using PhigrosLibraryCSharp.GameRecords;
+using PhiInfo.Core.Models;
 using PhiInfo.Core.Models.Information;
 
-namespace PhiInfo.Core;
+namespace PhiInfo.Core.Extraction;
 
 /// <summary>
 /// this class is NOT thread and async safe
 /// </summary>
-public class PhigrosRawAssetExtractor : IDisposable // TODO: check if this class can be made thread and async safe, this class calls some static cpp2il methods so it blow up
+public class InfoExtractor : IDisposable // TODO: check if this class can be made thread and async safe, this class calls some static cpp2il methods so it blow up
 {
 
 	private readonly AssetsFile _level0;
@@ -29,7 +31,7 @@ public class PhigrosRawAssetExtractor : IDisposable // TODO: check if this class
 	/// <param name="il2CppSo"></param>
 	/// <param name="globalMetadata"></param>
 	/// <param name="classDataTPK"></param>
-	public PhigrosRawAssetExtractor(
+	public InfoExtractor(
 		Stream globalGameManagers,
 		Stream level0,
 		Stream? level22,
@@ -57,19 +59,19 @@ public class PhigrosRawAssetExtractor : IDisposable // TODO: check if this class
 			classDataTPK
 		);
 	}
-	~PhigrosRawAssetExtractor()
+	~InfoExtractor()
 	{
 		this.Dispose();
 	}
 
-	public static PhigrosRawAssetExtractor FromApkAndObb(Stream apk, Stream? obb, Stream classDataTPK)
+	public static InfoExtractor FromApkAndObb(Stream apk, Stream? obb, Stream classDataTPK)
 	{
 		PhigrosAssetHelper.GetInformationExtractionRequiredData(apk,
 			out Stream globalGameManagers,
 			out Stream level0,
 			out byte[] il2CppSo,
 			out byte[] globalMetadata);
-		return new PhigrosRawAssetExtractor(
+		return new InfoExtractor(
 			globalGameManagers,
 			level0,
 			obb is null ? null : PhigrosAssetHelper.GetLevel22FromObb(obb),
@@ -125,18 +127,18 @@ public class PhigrosRawAssetExtractor : IDisposable // TODO: check if this class
 				AssetTypeValueField chartersArray = song["charter"]["Array"];
 				AssetTypeValueField difficultiesArray = song["difficulty"]["Array"];
 
-				Dictionary<string, SongLevel> levelsDict = [];
+				Dictionary<Difficulty, SongLevel> levelsDict = [];
 				List<int> allComboNum = comboDict.TryGetValue(songId, out List<int>? value) ? value : [];
 				for (int i = 0; i < difficultiesArray.Children.Count; i++)
 				{
 					double diff = difficultiesArray[i].AsDouble;
 					if (diff == 0) continue;
 
-					string levelName = levelsArray[i].AsString;
+					Difficulty difficulty = Enum.Parse<Difficulty>(levelsArray[i].AsString);
 					string charter = chartersArray[i].AsString;
 					int allCombo = i < allComboNum.Count ? allComboNum[i] : 0; // TODO: fix some songs have combo count of 0
 
-					levelsDict[levelName] = new SongLevel(
+					levelsDict[difficulty] = new SongLevel(
 						charter,
 						allCombo,
 						Math.Round(diff, 1)

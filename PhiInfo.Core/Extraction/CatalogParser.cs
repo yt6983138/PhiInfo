@@ -7,7 +7,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
-namespace PhiInfo.Core;
+namespace PhiInfo.Core.Extraction;
 
 public class CatalogParser
 {
@@ -57,7 +57,7 @@ public class CatalogParser
 	}
 	public static CatalogParser FromObb(Stream obb)
 	{
-		using Stream catalogStream = PhiInfo.Core.PhigrosAssetHelper.GetCatalogStreamFromObb(obb);
+		using Stream catalogStream = PhigrosAssetHelper.GetCatalogStreamFromObb(obb);
 		return FromJson(catalogStream);
 	}
 
@@ -135,8 +135,8 @@ public class CatalogParser
 			for (int j = 1; j < entryCount; j++)
 				bucketReader.ReadInt();
 
-			int entryStart = 4 + (28 * entryPos);
-			ushort raw = (ushort)(entryData[entryStart + 8] ^ (entryData[entryStart + 9] << 8));
+			int entryStart = 4 + 28 * entryPos;
+			ushort raw = (ushort)(entryData[entryStart + 8] ^ entryData[entryStart + 9] << 8);
 			CatalogValue value = CatalogValue.FromRaw(raw);
 
 			table.Add(new CatalogEntry(key, value));

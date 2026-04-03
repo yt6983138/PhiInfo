@@ -1,6 +1,6 @@
 ﻿using LibCpp2IL.Logging;
 
-namespace PhiInfo.Core;
+namespace PhiInfo.Core.Cpp2ILLogWriter;
 public class QuietLogWriter : LogWriter
 {
 	public override void Error(string message) { }

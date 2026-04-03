@@ -1,5 +1,6 @@
 ﻿using LibCpp2IL.Logging;
-using PhiInfo.Core;
+using PhiInfo.Core.Extraction;
+using PhiInfo.Core.Models;
 using PhiInfo.Core.Models.Information;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Png;
@@ -134,10 +135,10 @@ public class Program
 
 		LibLogger.Writer = new QuietLogWriter(); // tells cpp2il to shut up
 
-		PhigrosRawAssetExtractor? infoExtractor = null;
+		InfoExtractor? infoExtractor = null;
 		if (apkFile is not null && classDataFile is not null)
 		{
-			infoExtractor = PhigrosRawAssetExtractor.FromApkAndObb(
+			infoExtractor = InfoExtractor.FromApkAndObb(
 				apkFile.OpenRead(),
 				obbFile?.OpenRead(),
 				classDataFile.OpenRead());

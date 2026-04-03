@@ -5,7 +5,7 @@ using LibCpp2IL;
 using LibCpp2IL.Metadata;
 using System.Diagnostics.CodeAnalysis;
 
-namespace PhiInfo.Core;
+namespace PhiInfo.Core.Extraction;
 
 public class MonoBehaviourFinder : IDisposable
 {
@@ -130,9 +130,7 @@ public class MonoBehaviourFinder : IDisposable
 			// 确定 MonoScript 所在的文件
 			AssetsFile monoScriptFile;
 			if (scriptPtr.FileId == 0)
-			{
 				monoScriptFile = file;
-			}
 			else if (scriptPtr.FileId == 1)
 			{
 				monoScriptFile = this._globalGameManagers;
@@ -152,9 +150,7 @@ public class MonoBehaviourFinder : IDisposable
 
 			// 移除 .dll 扩展名
 			if (assemblyName.EndsWith(".dll"))
-			{
 				assemblyName = assemblyName[..^4];
-			}
 
 			AssetTypeTemplateField newBase = this._templateGenerator.GetTemplateField(
 					baseField,
@@ -164,9 +160,7 @@ public class MonoBehaviourFinder : IDisposable
 					new UnityVersion(file.Metadata.UnityVersion));
 
 			if (newBase != null)
-			{
 				baseField = newBase;
-			}
 
 		OutAndReset:
 			// 恢复原始位置
@@ -263,9 +257,7 @@ public class MonoBehaviourFinder : IDisposable
 			string? msName = msBase["m_Name"]?.AsString;
 
 			if (msName == name)
-			{
 				return this.GetBaseField(file, info, true);
-			}
 		}
 
 		return null;

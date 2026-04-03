@@ -1,5 +1,5 @@
 ﻿using Fmod5Sharp.CodecRebuilders;
-using PhiInfo.Core;
+using PhiInfo.Core.Extraction;
 using PhiInfo.Core.Models.Information;
 using SixLabors.ImageSharp.Formats.Png;
 
@@ -13,7 +13,7 @@ public sealed class ExtractTest
 	{
 		Helper.EnsureWorkingDirectory();
 
-		using PhigrosRawAssetExtractor rawExtractor = PhigrosRawAssetExtractor.FromApkAndObb(
+		using InfoExtractor rawExtractor = InfoExtractor.FromApkAndObb(
 			File.OpenRead(Helper.TestApkPath),
 			File.OpenRead(Helper.TestObbPath),
 			File.OpenRead(Helper.TestClassDataTPKPath));

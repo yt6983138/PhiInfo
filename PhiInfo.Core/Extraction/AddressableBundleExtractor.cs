@@ -4,7 +4,7 @@ using PhiInfo.Core.Models.Catalog;
 using PhiInfo.Core.Models.RawAsset;
 using System.Globalization;
 
-namespace PhiInfo.Core;
+namespace PhiInfo.Core.Extraction;
 
 /// <summary>
 /// stream must be seekable and readable, will be disposed after use
@@ -75,9 +75,7 @@ public class AddressableBundleExtractor
 		AssetBundleFile bundleFile = new();
 		bundleFile.Read(reader);
 		if (bundleFile.DataIsCompressed)
-		{
 			bundleFile = BundleHelper.UnpackBundle(bundleFile);
-		}
 
 		bundleFile.GetFileRange(0, out long offset, out long size);
 		SegmentStream stream = new(bundleFile.DataReader.BaseStream, offset, size);

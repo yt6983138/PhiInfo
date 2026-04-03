@@ -2,7 +2,7 @@
 using Fmod5Sharp.FmodTypes;
 using System.IO.Compression;
 
-namespace PhiInfo.Core;
+namespace PhiInfo.Core.Extraction;
 public static class PhigrosAssetHelper
 {
 	public static MemoryStream MergeStreams(params IEnumerable<Stream> streams)

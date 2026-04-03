@@ -1,7 +1,7 @@
 ﻿using LibCpp2IL.Logging;
 using System.Text;
 
-namespace PhiInfo.Core;
+namespace PhiInfo.Core.Cpp2ILLogWriter;
 public class StreamLogWriter : LogWriter, IDisposable
 {
 	public Stream Stream { get; set; }

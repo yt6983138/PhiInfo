@@ -1,4 +1,4 @@
-﻿namespace PhiInfo.Core;
+﻿namespace PhiInfo.Core.Models;
 
 [AttributeUsage(AttributeTargets.Field, Inherited = false, AllowMultiple = false)]
 public class LanguageStringIdAttribute : Attribute

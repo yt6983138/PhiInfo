@@ -1,3 +1,5 @@
+using PhigrosLibraryCSharp.GameRecords;
+
 namespace PhiInfo.Core.Models.Information;
 
 /// <summary>
@@ -19,7 +21,7 @@ public record SongInfo(
 	string Illustrator,
 	double PreviewStartTimeSeconds,
 	double PreviewEndTimeSeconds,
-	Dictionary<string, SongLevel> Levels)
+	Dictionary<Difficulty, SongLevel> Levels)
 {
 
 	public string LowResolutionIllustrationAddressablePath => $"Assets/Tracks/{this.Id}/IllustrationLowRes.jpg";
@@ -28,7 +30,7 @@ public record SongInfo(
 
 	public string MusicAddressablePath => $"Assets/Tracks/{this.Id}/music.wav";
 
-	public string GetChartAddressablePath(string difficulty) // TODO: make difficulty an enum
+	public string GetChartAddressablePath(Difficulty difficulty)
 	{
 		if (!this.Levels.ContainsKey(difficulty))
 		{
