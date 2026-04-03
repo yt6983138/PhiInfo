@@ -12,6 +12,12 @@ namespace PhiInfo.CLI;
 
 public class Program
 {
+	private record struct NonMultiLanguageInfos(List<SongInfo> Songs,
+		List<Avatar> Avatars,
+		List<ChapterInfo> Chapters);
+	private record struct MultiLanguageInfos(List<Folder>? Collections,
+		List<string> Tips);
+
 	private static readonly Option<FileInfo> ApkOption = new("--apk")
 	{
 		Description = "Path to the APK file",
@@ -70,7 +76,7 @@ public class Program
 		Required = false
 	};
 
-	private static readonly Option<Language> LanguageOption = new("--language")
+	private static readonly Option<Language> LanguageOption = new("--language") // TODO: accept extract all languages if "All" is specified
 	{
 		Description = "Extract collections and tips using language",
 		Required = false,
@@ -150,43 +156,50 @@ public class Program
 				Console.WriteLine("Warning: Collection cannot be extracted because missing obb file.");
 
 			Console.WriteLine("Extracting information...");
-			PhigrosExtractedDataCollection info = new(
-				infoExtractor.ExtractSongInfo(),
-				obbFile is null ? [] : infoExtractor.ExtractCollection(),
-				infoExtractor.ExtractAvatars(),
-				infoExtractor.ExtractTips(),
-				infoExtractor.ExtractChapters());
+			List<SongInfo> songs = infoExtractor.ExtractSongInfo();
+			List<Folder>? collections = obbFile is null ? null : infoExtractor.ExtractCollection();
+			List<Avatar> avatars = infoExtractor.ExtractAvatars();
+			List<string> tips = infoExtractor.ExtractTips();
+			List<ChapterInfo> chapters = infoExtractor.ExtractChapters();
+
 
 			Console.WriteLine("Writing information...");
 			extractInfoTo.Create();
 			File.WriteAllText(
 				Path.Combine(extractInfoTo.FullName, "info.json"),
-				JsonSerializer.Serialize(info),
+				JsonSerializer.Serialize(new NonMultiLanguageInfos(songs, avatars, chapters)),
 				Encoding.UTF8);
+			File.WriteAllText(
+				Path.Combine(extractInfoTo.FullName, $"tipsAndCollections_{language}.json"),
+				JsonSerializer.Serialize(new MultiLanguageInfos(collections, tips)),
+				Encoding.UTF8);
+
 
 			// PhigrosLibrary_Resource compatible format
 			Console.WriteLine("Writing PhigrosLibrary_Resource compatible information...");
 
 			// i know those string concats are ugly as fuck but lazy to change it rn
-			string avatarTxt = string.Join('\n', info.Avatars.Select(a => a.Name));
-			string collectionTsv = string.Join('\n', info.Collections.SelectMany(x => x.Files).Select(x => $"{x.Key}\t{x.Name}\t{x.SubIndex}"));
-			string difficultyTsv = string.Join('\n', info.Songs
+			string avatarTxt = string.Join('\n', avatars.Select(a => a.Name));
+			string? collectionTsv = collections is null ? null : string.Join('\n', collections.SelectMany(x => x.Files)
+				.Select(x => $"{x.Key}\t{x.Name}\t{x.SubIndex}"));
+			string difficultyTsv = string.Join('\n', songs
 				.Where(x => !x.Id.Contains("Introduction"))
 				.Select(x => $"{x.Id[..^2]}\t{x.Levels["EZ"].ChartConstant}\t{x.Levels["HD"].ChartConstant}\t{x.Levels["IN"].ChartConstant}{(x.Levels.TryGetValue("AT", out SongLevel? at) ? $"\t{at.ChartConstant}" : "")}"));
 			// TODO: add illustration, single txt
-			string infoTsv = string.Join('\n', info.Songs
+			string infoTsv = string.Join('\n', songs
 				.Where(x => !x.Id.Contains("Introduction"))
 				.Select(x => $"{x.Id[..^2]}\t{x.Name}\t{x.Illustrator}\t{x.Levels["EZ"].Charter}\t{x.Levels["HD"].Charter}\t{x.Levels["IN"].Charter}{(x.Levels.TryGetValue("AT", out SongLevel? at) ? $"\t{at.Charter}" : "")}"));
-			string tipsTxt = string.Join('\n', info.Tips);
+			string tipsTxt = string.Join('\n', tips);
 			// seriously why is it named tmp
-			string tmpTsv = string.Join('\n', info.Avatars.Select(x => $"{x.Name}\t{x.AddressablePath[7..]}"));
+			string tmpTsv = string.Join('\n', avatars.Select(x => $"{x.Name}\t{x.AddressablePath[7..]}"));
 
 			File.WriteAllText(Path.Combine(extractInfoTo.FullName, "avatar.txt"), avatarTxt, Encoding.UTF8);
-			File.WriteAllText(Path.Combine(extractInfoTo.FullName, "collection.tsv"), collectionTsv, Encoding.UTF8);
 			File.WriteAllText(Path.Combine(extractInfoTo.FullName, "difficulty.tsv"), difficultyTsv, Encoding.UTF8);
 			File.WriteAllText(Path.Combine(extractInfoTo.FullName, "info.tsv"), infoTsv, Encoding.UTF8);
 			File.WriteAllText(Path.Combine(extractInfoTo.FullName, "tips.txt"), tipsTxt, Encoding.UTF8);
 			File.WriteAllText(Path.Combine(extractInfoTo.FullName, "tmp.tsv"), tmpTsv, Encoding.UTF8);
+			if (collectionTsv is not null)
+				File.WriteAllText(Path.Combine(extractInfoTo.FullName, "collection.tsv"), collectionTsv, Encoding.UTF8);
 		}
 
 		if (extractAssetTo is not null)
