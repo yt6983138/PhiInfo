@@ -11,7 +11,8 @@ public class CLITest
 			"--apk", Helper.TestApkPath,
 			"--obb", Helper.TestObbPath,
 			"--classdata", Helper.TestClassDataTPKPath,
-			"--extract-info-to", "./TestData/ExtractedInfo"]));
+			"--extract-info-to", "./TestData/ExtractedInfo",
+			"--language", "English"]));
 	}
 	[TestMethod]
 	public void Asset()

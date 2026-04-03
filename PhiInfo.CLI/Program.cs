@@ -70,6 +70,13 @@ public class Program
 		Required = false
 	};
 
+	private static readonly Option<Language> LanguageOption = new("--language")
+	{
+		Description = "Extract collections and tips using language",
+		Required = false,
+		DefaultValueFactory = _ => Language.Chinese
+	};
+
 	private static readonly List<Option> Options =
 	[
 		ApkOption,
@@ -82,7 +89,8 @@ public class Program
 		NoLowResolutionIllustrationOption,
 		NoBlurIllustrationOption,
 		NoMusicOption,
-		NoChartsOption
+		NoChartsOption,
+		LanguageOption
 	];
 
 	public static int Main(string[] args)
@@ -116,6 +124,8 @@ public class Program
 		bool noMusic = parseResult.GetValue(NoMusicOption);
 		bool noCharts = parseResult.GetValue(NoChartsOption);
 
+		Language language = parseResult.GetValue(LanguageOption);
+
 		LibLogger.Writer = new QuietLogWriter(); // tells cpp2il to shut up
 
 		PhigrosRawAssetExtractor? infoExtractor = null;
@@ -125,6 +135,8 @@ public class Program
 				apkFile.OpenRead(),
 				obbFile?.OpenRead(),
 				classDataFile.OpenRead());
+
+			infoExtractor.ExtractLanguage = language;
 		}
 
 		if (extractInfoTo is not null)

@@ -12,5 +12,17 @@ public class LanguageStringIdAttribute : Attribute
 public enum Language
 {
 	[LanguageStringId("chinese")]
-	Chinese = 40 // TODO: add more languages when needed
+	Chinese = 0x28,
+
+	[LanguageStringId("chineseTraditional")]
+	TraditionalChinese = 0x29,
+
+	[LanguageStringId("english")]
+	English = 0x0A,
+
+	[LanguageStringId("japanese")]
+	Japanese = 0x16,
+
+	[LanguageStringId("korean")]
+	Korean = 0x17
 }
