@@ -17,12 +17,20 @@ public class CLITest
 	public void Asset()
 	{
 		Helper.EnsureWorkingDirectory();
-		Assert.AreEqual(0, CLI.Program.Main([
+
+		List<string> args = [
 			"--apk", Helper.TestApkPath,
 			"--obb", Helper.TestObbPath,
 			"--classdata", Helper.TestClassDataTPKPath,
 			"--extract-asset-to", "./TestData/ExtractedAsset",
 			"--no-illustration",
-			"--no-blur-illustration"]));
+			"--no-blur-illustration"];
+
+		if (File.Exists(Helper.TestAuxObbPath))
+		{
+			args.AddRange(["--aux-obb", Helper.TestAuxObbPath]);
+		}
+
+		Assert.AreEqual(0, CLI.Program.Main(args.ToArray()));
 	}
 }

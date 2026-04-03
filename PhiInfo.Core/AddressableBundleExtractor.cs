@@ -38,14 +38,14 @@ public class AddressableBundleExtractor
 	}
 
 	/// <summary>
-	/// note: obb may not contain all bundles, need to merge patch files for complete extraction
+	/// note: obb may not contain all bundles, may need to specify patch obb (aux obb)
 	/// </summary>
 	/// <param name="obb"></param>
 	/// <returns></returns>
-	public static AddressableBundleExtractor FromObb(Stream obb)
+	public static AddressableBundleExtractor FromObb(Stream obb, Stream? auxObb = null)
 	{
 		CatalogParser catalogParser = CatalogParser.FromObb(obb);
-		return new(catalogParser, PhigrosAssetHelper.CreateBundleFactoryFromObb(obb));
+		return new(catalogParser, PhigrosAssetHelper.CreateBundleFactoryFromObb(obb, auxObb));
 	}
 
 	private static byte[] ReadAbsolutePositionRange(Stream baseStream, long offset, int size)

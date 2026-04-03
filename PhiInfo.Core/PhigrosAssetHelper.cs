@@ -73,12 +73,24 @@ public static class PhigrosAssetHelper
 		return zip.GetEntryOrThrow("assets/aa/catalog.json").Open();
 	}
 
-	public static BundleStreamFactory CreateBundleFactoryFromObb(Stream obb)
+	/// <summary>
+	/// aux obb is usually patch obb
+	/// </summary>
+	/// <param name="obb"></param>
+	/// <param name="auxObb"></param>
+	/// <returns></returns>
+	/// <exception cref="FileNotFoundException"></exception>
+	public static BundleStreamFactory CreateBundleFactoryFromObb(Stream obb, Stream? auxObb = null)
 	{
 		ZipArchive zip = new(obb, ZipArchiveMode.Read, true);
+		ZipArchive? auxZip = auxObb is null ? null : new(auxObb, ZipArchiveMode.Read, true);
 		return path =>
 		{
-			using Stream zipStream = zip.GetEntryOrThrow($"assets/aa/Android/{path}").Open();
+			ZipArchiveEntry entry = zip.GetEntry($"assets/aa/Android/{path}") ??
+				auxZip?.GetEntryOrThrow($"assets/aa/Android/{path}") ??
+				throw new FileNotFoundException($"Required Unity asset missing from package and no auxiliary obb provided: {path}");
+
+			using Stream zipStream = entry.Open();
 
 			MemoryStream stream = new();
 			zipStream.CopyTo(stream);

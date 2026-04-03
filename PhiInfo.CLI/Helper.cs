@@ -13,7 +13,7 @@ internal static class Helper
 		for (int i = 0; i < bytes.Length; i++)
 		{
 			Span<char> slice = str.Slice(i * 2, 2);
-			bytes[i].TryFormat(str, out int charsWritten, "x2");
+			bytes[i].TryFormat(slice, out int charsWritten, "x2");
 		}
 
 		return new(str);

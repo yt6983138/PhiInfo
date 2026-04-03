@@ -5,6 +5,7 @@ internal static class Helper
 
 	internal static string TestApkPath => "./TestData/base.apk";
 	internal static string TestObbPath => "./TestData/obb.obb";
+	internal static string TestAuxObbPath => "./TestData/auxObb.obb";
 	internal static string TestClassDataTPKPath => "./TestData/classdata.tpk";
 
 	internal static void EnsureWorkingDirectory()

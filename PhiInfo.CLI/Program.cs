@@ -17,15 +17,20 @@ public class Program
 		Description = "Path to the APK file",
 		Required = false
 	};
-	private static readonly Option<FileInfo> ObbOption = new("--obb") // TODO: support patch obb file
+	private static readonly Option<FileInfo> ObbOption = new("--obb")
 	{
 		Description = "Path to the OBB file",
+		Required = false
+	};
+	private static readonly Option<FileInfo> AuxObbOption = new("--aux-obb")
+	{
+		Description = "Path to the auxiliary OBB file",
 		Required = false
 	};
 	private static readonly Option<FileInfo> ClassDataOption = new("--classdata")
 	{
 		Description = "Path to the class data TPK file",
-		Required = true
+		Required = false
 	};
 
 	private static readonly Option<DirectoryInfo> ExtractInfoOption = new("--extract-info-to")
@@ -69,6 +74,7 @@ public class Program
 	[
 		ApkOption,
 		ObbOption,
+		AuxObbOption,
 		ClassDataOption,
 		ExtractInfoOption,
 		ExtractAssetOption,
@@ -98,7 +104,8 @@ public class Program
 	{
 		FileInfo? apkFile = parseResult.GetValue(ApkOption);
 		FileInfo? obbFile = parseResult.GetValue(ObbOption);
-		FileInfo classDataFile = parseResult.GetValue(ClassDataOption)!;
+		FileInfo? auxObbFile = parseResult.GetValue(AuxObbOption);
+		FileInfo? classDataFile = parseResult.GetValue(ClassDataOption);
 
 		DirectoryInfo? extractInfoTo = parseResult.GetValue(ExtractInfoOption);
 		DirectoryInfo? extractAssetTo = parseResult.GetValue(ExtractAssetOption);
@@ -112,7 +119,7 @@ public class Program
 		LibLogger.Writer = new QuietLogWriter(); // tells cpp2il to shut up
 
 		PhigrosRawAssetExtractor? infoExtractor = null;
-		if (apkFile is not null)
+		if (apkFile is not null && classDataFile is not null)
 		{
 			infoExtractor = PhigrosRawAssetExtractor.FromApkAndObb(
 				apkFile.OpenRead(),
@@ -202,7 +209,7 @@ public class Program
 
 			// name -> hash, like "-SURREALISM-": "3da229e009e3edc8a4824ee0dc7aa87e796a7b47"
 			Dictionary<string, string> avatarMap = [];
-			AddressableBundleExtractor assetExtractor = AddressableBundleExtractor.FromObb(obbFile.OpenRead());
+			AddressableBundleExtractor assetExtractor = AddressableBundleExtractor.FromObb(obbFile.OpenRead(), auxObbFile?.OpenRead());
 			foreach (string assetPath in assetExtractor.ListMeaningfulAssetPathsInCatalog())
 			{
 				Console.WriteLine($"Extracting {assetPath}...");
@@ -217,7 +224,6 @@ public class Program
 
 					string hash = SHA1.HashData(avatarStream).ToHexString();
 					File.WriteAllBytes(GetAssetOutputPath($"{AvatarBasePath}{hash}.png"), avatarStream.ToArray());
-					// TODO: add avatar name mapping, assetPath contains just id
 
 					if (avatars is null) continue;
 
@@ -241,7 +247,7 @@ public class Program
 				if (assetPath.EndsWith(".wav") && !noMusic)
 				{
 					byte[] music = assetExtractor.GetMusicRaw(assetPath).Decode().ToOggBytes();
-					File.WriteAllBytes(GetAssetOutputPath(assetPath).EnsureAssetCanCreate(), music);
+					File.WriteAllBytes(GetAssetOutputPath($"{assetPath[..^4]}.ogg").EnsureAssetCanCreate(), music);
 
 					continue;
 				}
