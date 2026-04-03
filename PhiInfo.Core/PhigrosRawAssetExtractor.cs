@@ -242,14 +242,4 @@ public class PhigrosRawAssetExtractor : IDisposable // TODO: check if this class
 
 		return result;
 	}
-
-	public PhigrosExtractedDataCollection ExtractAll()
-	{
-		return new PhigrosExtractedDataCollection(
-			this.ExtractSongInfo(),
-			this.ExtractCollection(),
-			this.ExtractAvatars(),
-			this.ExtractTips(),
-			this.ExtractChapters());
-	}
 }
