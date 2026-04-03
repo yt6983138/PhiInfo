@@ -5,6 +5,14 @@ using SixLabors.ImageSharp.PixelFormats;
 
 namespace PhiInfo.Core.Models.RawAsset;
 
+/// <summary>
+/// Extracted image data from Unity assets.
+/// </summary>
+/// <param name="Format">Unity internal format flag.</param>
+/// <param name="Width">Width of the image.</param>
+/// <param name="Height">Height of the image.</param>
+/// <param name="Data">Data of the image, just raw pixel data and may need 
+/// to be decoded using <see cref="EtcDecoder"/>.</param>
 public record UnityImage(uint Format, uint Width, uint Height, byte[] Data)
 {
 	public byte[] CraftImageBufferWithHeader()
@@ -19,6 +27,12 @@ public record UnityImage(uint Format, uint Width, uint Height, byte[] Data)
 		this.Data.CopyTo(result, StaticHeaderSize);
 		return result;
 	}
+
+	/// <summary>
+	/// Decode the image data into an <see cref="Image"/> object.
+	/// </summary>
+	/// <returns>A decoded <see cref="Image"/>, for convenient processing.</returns>
+	/// <exception cref="NotSupportedException">Thrown if the format is not supported.</exception>
 	public Image Decode()
 	{
 		int width = (int)this.Width;

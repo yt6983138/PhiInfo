@@ -3,8 +3,18 @@ using Fmod5Sharp.FmodTypes;
 using System.IO.Compression;
 
 namespace PhiInfo.Core.Extraction;
+
+/// <summary>
+/// Helper class for preparing extraction data from raw apk or obb files, 
+/// or convert FMOD sound bank to ogg files.
+/// </summary>
 public static class PhigrosAssetHelper
 {
+	/// <summary>
+	/// Merge streams into one stream.
+	/// </summary>
+	/// <param name="streams">Streams to be merged. They will not be disposed by this method, but they will be read to the end.</param>
+	/// <returns>A new constructed <see cref="MemoryStream"/>, with <paramref name="streams"/> contents copied to it, and position set to 0.</returns>
 	public static MemoryStream MergeStreams(params IEnumerable<Stream> streams)
 	{
 		MemoryStream merged = new();
@@ -15,6 +25,12 @@ public static class PhigrosAssetHelper
 		merged.Position = 0;
 		return merged;
 	}
+	/// <summary>
+	/// Create a complete level22 stream by merging all level22.split* files in the given zip.
+	/// </summary>
+	/// <param name="zip">The zip file. Usually the obb file.</param>
+	/// <returns>A merged <see cref="MemoryStream"/> with complete level22 content, and position set to 0.</returns>
+	/// <exception cref="FileNotFoundException">Thrown if level22.split files does not exist.</exception>
 	public static MemoryStream BuildCompleteLevel22FromZip(ZipArchive zip)
 	{
 		const string SplitPrefix = "assets/bin/Data/level22.split";
@@ -45,6 +61,11 @@ public static class PhigrosAssetHelper
 		return level22;
 	}
 
+	/// <summary>
+	/// Create a complete level22 stream from obb. <see cref="BuildCompleteLevel22FromZip(ZipArchive)"/>.
+	/// </summary>
+	/// <param name="obb">The obb file.</param>
+	/// <returns>Merged stream of level22.</returns>
 	public static MemoryStream GetLevel22FromObb(Stream obb)
 	{
 		ZipArchive zip = new(obb, ZipArchiveMode.Read, true);
@@ -67,6 +88,11 @@ public static class PhigrosAssetHelper
 		level0 = new MemoryStream(level0Data);
 	}
 
+	/// <summary>
+	/// Get catalog.json stream from obb. This file is map from addressable path to bundle hash.
+	/// </summary>
+	/// <param name="obb">The obb file.</param>
+	/// <returns>A non-seekable catalog.json stream.</returns>
 	public static Stream GetCatalogStreamFromObb(Stream obb)
 	{
 		ZipArchive zip = new(obb, ZipArchiveMode.Read, true);
@@ -74,12 +100,14 @@ public static class PhigrosAssetHelper
 	}
 
 	/// <summary>
-	/// aux obb is usually patch obb
+	/// Creates a bundle stream factory from obb, which bundle name to obb path. The returned factory 
+	/// will first try to get the bundle from the main obb, and if not found, it will try to get it 
+	/// from the auxiliary (patch) obb if provided.
 	/// </summary>
-	/// <param name="obb"></param>
-	/// <param name="auxObb"></param>
-	/// <returns></returns>
-	/// <exception cref="FileNotFoundException"></exception>
+	/// <param name="obb">The main obb file.</param>
+	/// <param name="auxObb">The auxiliary obb file.</param>
+	/// <returns>A bundle stream factory.</returns>
+	/// <exception cref="FileNotFoundException">If the obb provided does not have requested bundle.</exception>
 	public static BundleStreamFactory CreateBundleFactoryFromObb(Stream obb, Stream? auxObb = null)
 	{
 		ZipArchive zip = new(obb, ZipArchiveMode.Read, true);
@@ -100,6 +128,12 @@ public static class PhigrosAssetHelper
 		};
 	}
 
+	/// <summary>
+	/// Convert a <see cref="FmodSoundBank"/> to ogg file bytes. The returned ogg file will not be 
+	/// byte-to-byte same as the original one in the package.
+	/// </summary>
+	/// <param name="bank">The audio file (.wav extension) extracted from bundle</param>
+	/// <returns>Encoded ogg bytes.</returns>
 	public static byte[] ToOggBytes(this FmodSoundBank bank)
 	{
 		return FmodVorbisRebuilder.RebuildOggFile(bank.Samples[0]);

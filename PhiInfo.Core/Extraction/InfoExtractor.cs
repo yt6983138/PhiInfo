@@ -6,9 +6,10 @@ using PhiInfo.Core.Models.Information;
 namespace PhiInfo.Core.Extraction;
 
 /// <summary>
-/// this class is NOT thread and async safe
+/// Extracts information from Phigros assets. Please see warning at 
+/// <see cref="InfoExtractor.InfoExtractor(Stream, Stream, Stream?, byte[], byte[], Stream)"/>.
 /// </summary>
-public class InfoExtractor : IDisposable // TODO: check if this class can be made thread and async safe, this class calls some static cpp2il methods so it blow up
+public class InfoExtractor : IDisposable
 {
 
 	private readonly AssetsFile _level0;
@@ -20,17 +21,30 @@ public class InfoExtractor : IDisposable // TODO: check if this class can be mad
 
 	public bool Disposed { get; private set; }
 
+	/// <summary>
+	/// Extracts collections and tips in the specified language. Default is Chinese.
+	/// </summary>
 	public Language ExtractLanguage { get; set; } = Language.Chinese;
 
 	/// <summary>
-	/// all stream must be readable and seekable
+	/// Warning: Newing multiple instances of this class (concurrently) may cause unexpected behaviour,
+	/// because the internal <see cref="MonoBehaviourFinder"/> new some Cpp2Il classes which have static calls to 
+	/// <see cref="LibCpp2IlMain"/> class, which may cause some static fields to be overridden. Recommend to new 
+	/// only one instance of this class and reuse it to extract all information you need, or new multiple 
+	/// instances sequentially.
+	/// 
+	/// All streams passed to this constructor should be seekable and support reading, and they will be 
+	/// disposed when the InfoExtractor is disposed. The <paramref name="level22"/> stream can be null, but if it is null, 
+	/// collection data cannot be extracted.
 	/// </summary>
-	/// <param name="globalGameManagers"></param>
-	/// <param name="level0"></param>
-	/// <param name="level22">need to be merged from split files, if not supplied collection cannot be extracted</param>
-	/// <param name="il2CppSo"></param>
-	/// <param name="globalMetadata"></param>
-	/// <param name="classDataTPK"></param>
+	/// <param name="globalGameManagers">The <c>assets/bin/Data/globalgamemanagers.assets</c> file. (In apk)</param>
+	/// <param name="level0">The <c>assets/bin/Data/level0</c> file. (In apk)</param>
+	/// <param name="level22">The <c>assets/bin/Data/level22.split*</c> files. (In obb) Need to be merged. 
+	/// If not supplied collections cannot be extracted.</param>
+	/// <param name="il2CppSo">The <c>lib/arm64-v8a/libil2cpp.so</c> file. (In apk)</param>
+	/// <param name="globalMetadata">The <c>assets/bin/Data/Managed/Metadata/global-metadata.dat</c> file. (In apk)</param>
+	/// <param name="classDataTPK">Class database file. Can be obtained 
+	/// <a href="https://nightly.link/AssetRipper/Tpk/workflows/type_tree_tpk/master/uncompressed_file.zip">here</a>.</param>
 	public InfoExtractor(
 		Stream globalGameManagers,
 		Stream level0,
@@ -64,6 +78,15 @@ public class InfoExtractor : IDisposable // TODO: check if this class can be mad
 		this.Dispose();
 	}
 
+	/// <summary>
+	/// Constructs an <see cref="InfoExtractor"/> from apk and obb streams. Please see warning at 
+	/// <see cref="InfoExtractor(Stream, Stream, Stream?, byte[], byte[], Stream)" />.
+	/// </summary>
+	/// <param name="apk">Apk file stream.</param>
+	/// <param name="obb">Obb file stream.</param>
+	/// <param name="classDataTPK">Class data database file. See <see cref="InfoExtractor(Stream, Stream, Stream?, byte[], byte[], Stream)"/> 
+	/// classDataTpk param.</param>
+	/// <returns>A constructed <see cref="InfoExtractor"/>.</returns>
 	public static InfoExtractor FromApkAndObb(Stream apk, Stream? obb, Stream classDataTPK)
 	{
 		PhigrosAssetHelper.GetInformationExtractionRequiredData(apk,

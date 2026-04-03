@@ -3,16 +3,16 @@ using PhigrosLibraryCSharp.GameRecords;
 namespace PhiInfo.Core.Models.Information;
 
 /// <summary>
-/// 
+/// Extracted song information.
 /// </summary>
-/// <param name="Id">JourneywithYou.Iris.0</param>
-/// <param name="Key">Journey with You</param>
-/// <param name="Name">Journey with You</param>
-/// <param name="Composer">Iris</param>
-/// <param name="Illustrator">BTKCyber (青鸟 modified)</param>
-/// <param name="PreviewStartTimeSeconds">40.5</param>
-/// <param name="PreviewEndTimeSeconds">65.5</param>
-/// <param name="Levels"></param>
+/// <param name="Id">Internal song id. I.e. <c>JourneywithYou.Iris.0</c></param>
+/// <param name="Key">[Unknown]. I.e. <c>Journey with You</c></param>
+/// <param name="Name">Display name of the song. I.e. <c>Journey with You</c></param>
+/// <param name="Composer">Song composer. I.e. <c>Iris</c></param>
+/// <param name="Illustrator">Song illustration artist. I.e. <c>BTKCyber (青鸟 modified)</c></param>
+/// <param name="PreviewStartTimeSeconds">Preview start timestamp (seconds). I.e. <c>40.5</c></param>
+/// <param name="PreviewEndTimeSeconds">Preview end timestamp (seconds). I.e. <c>65.5</c></param>
+/// <param name="Levels">Per-difficulty chart metadata.</param>
 public record SongInfo(
 	string Id,
 	string Key,

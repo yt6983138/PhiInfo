@@ -1,16 +1,16 @@
 namespace PhiInfo.Core.Models.Information;
 
 /// <summary>
-/// 
+/// Extracted file/item information inside a <see cref="Folder"/>.
 /// </summary>
-/// <param name="Key">Yshanfeng</param>
-/// <param name="SubIndex">1</param>
-/// <param name="Name">【录音】山风</param>
-/// <param name="Date">770/02/29</param>
-/// <param name="Supervisor">鸠</param>
-/// <param name="Category">souvenir</param>
-/// <param name="Content">记录了异常的山谷风声，如猿啼鹤唳 (truncated)</param>
-/// <param name="Properties">长度=10min32s</param>
+/// <param name="Key">Internal key of the item. I.e. <c>Yshanfeng</c></param>
+/// <param name="SubIndex">[Unknown] I.e. <c>1</c></param>
+/// <param name="Name">Display name of the item. I.e. <c>【录音】山风</c></param>
+/// <param name="Date">In-game date string. I.e. <c>770/02/29</c></param>
+/// <param name="Supervisor">Supervisor/author label shown in-game. I.e. <c>鸠</c></param>
+/// <param name="Category">Item category. I.e. <c>souvenir</c></param>
+/// <param name="Content">Main text content of the item. I.e. <c>记录了异常的山谷风声，如猿啼鹤唳</c>(leftover truncated)</param>
+/// <param name="Properties">Extra properties string. Not sure where it is used. I.e. <c>长度=10min32s</c></param>
 public record FileItem(
 	string Key,
 	int SubIndex,

@@ -14,6 +14,13 @@ public class CatalogParser
 	private readonly ImmutableList<CatalogEntry> _entries;
 	public IReadOnlyList<CatalogEntry> Entries => this._entries;
 
+	/// <summary>
+	/// Parses catalog from parsed catalog.json data. Please use static methods to create
+	/// an instance of this class since they are more convenient, or use <see cref="PhigrosAssetHelper"/> methods.
+	/// </summary>
+	/// <param name="keyData"></param>
+	/// <param name="bucketData"></param>
+	/// <param name="entryData"></param>
 	public CatalogParser(
 		byte[] keyData,
 		byte[] bucketData,
@@ -135,8 +142,8 @@ public class CatalogParser
 			for (int j = 1; j < entryCount; j++)
 				bucketReader.ReadInt();
 
-			int entryStart = 4 + 28 * entryPos;
-			ushort raw = (ushort)(entryData[entryStart + 8] ^ entryData[entryStart + 9] << 8);
+			int entryStart = 4 + (28 * entryPos);
+			ushort raw = (ushort)(entryData[entryStart + 8] ^ (entryData[entryStart + 9] << 8));
 			CatalogValue value = CatalogValue.FromRaw(raw);
 
 			table.Add(new CatalogEntry(key, value));

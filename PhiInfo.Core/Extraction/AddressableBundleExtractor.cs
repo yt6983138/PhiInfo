@@ -7,10 +7,10 @@ using System.Globalization;
 namespace PhiInfo.Core.Extraction;
 
 /// <summary>
-/// stream must be seekable and readable, will be disposed after use
+/// Maps addressable bundle file name to the actual bundle stream.
 /// </summary>
-/// <param name="path"></param>
-/// <returns></returns>
+/// <param name="path">The addressable bundle name. I.e. 0a0ec2bd31adfd9c120bf7658ad4fa05.bundle</param>
+/// <returns>A stream to the bundle file. Must be seekable and readable. Will be disposed after use.</returns>
 public delegate Stream BundleStreamFactory(string path);
 public class AddressableBundleExtractor
 {
@@ -27,10 +27,13 @@ public class AddressableBundleExtractor
 	private readonly BundleStreamFactory _bundleStreamFactory;
 
 	/// <summary>
-	/// note: obb may not contain all bundles, need to merge patch files for complete extraction
+	/// Creates an instance of this class with a <see cref="CatalogParser"/> and a <see cref="BundleStreamFactory"/>. 
+	/// Recommend to use the static methods in <see cref="PhigrosAssetHelper"/> to create these parameters, 
+	/// or use the static method like <see cref="FromObb(Stream, Stream?)"/> to create an instance of this class directly.
+	/// Auxiliary obb is sometimes needed.
 	/// </summary>
-	/// <param name="catalogParser"></param>
-	/// <param name="bundleStreamFactory"></param>
+	/// <param name="catalogParser">A catalog parser.</param>
+	/// <param name="bundleStreamFactory">A bundle stream factory.</param>
 	public AddressableBundleExtractor(CatalogParser catalogParser, BundleStreamFactory bundleStreamFactory)
 	{
 		this._catalogParser = catalogParser;
@@ -38,10 +41,12 @@ public class AddressableBundleExtractor
 	}
 
 	/// <summary>
-	/// note: obb may not contain all bundles, may need to specify patch obb (aux obb)
+	/// Please see <see cref="AddressableBundleExtractor(CatalogParser, BundleStreamFactory)"/> for
+	/// more information.
 	/// </summary>
-	/// <param name="obb"></param>
-	/// <returns></returns>
+	/// <param name="obb">The obb file. May need <paramref name="auxObb"/> sometimes.</param>
+	/// <param name="auxObb">The auxiliary (patch) obb file.</param>
+	/// <returns>A new instance of <see cref="AddressableBundleExtractor"/>.</returns>
 	public static AddressableBundleExtractor FromObb(Stream obb, Stream? auxObb = null)
 	{
 		CatalogParser catalogParser = CatalogParser.FromObb(obb);
@@ -99,6 +104,10 @@ public class AddressableBundleExtractor
 	}
 
 	#region Public extraction methods
+	/// <summary>
+	/// Get all asset paths in the catalog, including the ones with only hexadecimal names.
+	/// </summary>
+	/// <returns>All asset paths from catalog.</returns>
 	public List<string> ListAllAssetPathsInCatalog()
 	{
 		return this._catalogParser.Entries
@@ -107,15 +116,22 @@ public class AddressableBundleExtractor
 			.ToList();
 	}
 	/// <summary>
-	/// stripping out assets with only hexadecimal names, which seemed to be unused or unimportant for asset extraction purposes
+	/// Get asset paths without the ones with only hexadecimal names, 
+	/// which seemed to be unused or unimportant for asset extraction purposes.
 	/// </summary>
-	/// <returns></returns>
+	/// <returns>A list with only meaningful asset paths.</returns>
 	public List<string> ListMeaningfulAssetPathsInCatalog()
 	{
 		return this.ListAllAssetPathsInCatalog()
 			.Where(x => !UInt128.TryParse(x, NumberStyles.HexNumber, null, out UInt128 _))
 			.ToList();
 	}
+	/// <summary>
+	/// Get raw image data from path.
+	/// </summary>
+	/// <param name="path">The addressable path.</param>
+	/// <returns>Raw image data in unity internal format.</returns>
+	/// <exception cref="ArgumentException">Thrown if there is no Texture2D in the bundle.</exception>
 	public UnityImage GetImageRaw(string path)
 	{
 		using MappedAssetBundle bundle = this.FindAddressableByCatalogPath(path);
@@ -144,6 +160,12 @@ public class AddressableBundleExtractor
 
 		throw new ArgumentException("No Texture2D found in the asset bundle.", nameof(path));
 	}
+	/// <summary>
+	/// Get raw music data from path.
+	/// </summary>
+	/// <param name="path">The addressable path.</param>
+	/// <returns>Raw music data in unity internal format.</returns>
+	/// <exception cref="ArgumentException">Thrown if there is no AudioClip in the bundle.</exception>
 	public UnityMusic GetMusicRaw(string path)
 	{
 		using MappedAssetBundle bundle = this.FindAddressableByCatalogPath(path);
@@ -167,6 +189,13 @@ public class AddressableBundleExtractor
 
 		throw new ArgumentException("No AudioClip found in the asset bundle.", nameof(path));
 	}
+
+	/// <summary>
+	/// Get raw text data from path.
+	/// </summary>
+	/// <param name="path">The addressable path.</param>
+	/// <returns>Raw text data in unity internal format.</returns>
+	/// <exception cref="ArgumentException">Thrown if there is no TextAsset in the bundle.</exception>
 	public UnityText GetTextRaw(string path)
 	{
 		using MappedAssetBundle bundle = this.FindAddressableByCatalogPath(path);

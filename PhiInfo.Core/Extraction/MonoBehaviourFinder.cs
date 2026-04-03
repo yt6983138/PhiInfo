@@ -18,6 +18,20 @@ public class MonoBehaviourFinder : IDisposable
 
 	private readonly Cpp2IlTempGenerator _templateGenerator;
 
+	/// <summary>
+	/// Warning: Newing multiple instances of this class (concurrently) may cause unexpected behaviour,
+	/// because the internal Cpp2Il classes have static calls to <see cref="LibCpp2IlMain"/> class, 
+	/// which may cause some static fields to be overridden. Recommend to new only one instance of this 
+	/// class and reuse it to extract all information you need, or new multiple instances sequentially.
+	/// 
+	/// All streams passed to this constructor should be seekable and support reading, and they will be 
+	/// disposed when the <see cref="MonoBehaviourFinder"/> is disposed.
+	/// </summary>
+	/// <param name="globalGameManagersAsset">The <c>assets/bin/Data/globalgamemanagers.assets</c> file. (In apk)</param>
+	/// <param name="il2CppBinary">The <c>lib/arm64-v8a/libil2cpp.so</c> file. (In apk)</param>
+	/// <param name="globalMetadataBinary">The <c>assets/bin/Data/Managed/Metadata/global-metadata.dat</c> file. (In apk)</param>
+	/// <param name="classDataTPK">Class database file. Can be obtained 
+	/// <a href="https://nightly.link/AssetRipper/Tpk/workflows/type_tree_tpk/master/uncompressed_file.zip">here</a>.</param>
 	public MonoBehaviourFinder(
 		Stream globalGameManagersAsset,
 		byte[] il2CppBinary,
@@ -172,6 +186,13 @@ public class MonoBehaviourFinder : IDisposable
 		return baseField;
 	}
 
+	/// <summary>
+	/// Get the Phigros version in integer form.
+	/// </summary>
+	/// <returns>Phigros version in integer form.</returns>
+	/// <exception cref="InvalidOperationException">Thrown if Cpp2Il is not initialized. It is initialized when
+	/// anything new a instance of <see cref="MonoBehaviourFinder"/>.</exception>
+	/// <exception cref="InvalidDataException">Thrown if failed to find Phigros version data.</exception>
 	public static uint GetPhiVersion()
 	{
 		Il2CppMetadata meta = LibCpp2IlMain.TheMetadata
