@@ -7,22 +7,22 @@ public class CLITest
 	public void Information()
 	{
 		Helper.EnsureWorkingDirectory();
-		PhiInfo.CLI.Program.Main([
+		Assert.AreEqual(0, CLI.Program.Main([
 			"--apk", Helper.TestApkPath,
 			"--obb", Helper.TestObbPath,
 			"--classdata", Helper.TestClassDataTPKPath,
-			"--extract-info-to", "./TestData/ExtractedInfo"]);
+			"--extract-info-to", "./TestData/ExtractedInfo"]));
 	}
 	[TestMethod]
 	public void Asset()
 	{
 		Helper.EnsureWorkingDirectory();
-		PhiInfo.CLI.Program.Main([
+		Assert.AreEqual(0, CLI.Program.Main([
 			"--apk", Helper.TestApkPath,
 			"--obb", Helper.TestObbPath,
 			"--classdata", Helper.TestClassDataTPKPath,
 			"--extract-asset-to", "./TestData/ExtractedAsset",
 			"--no-illustration",
-			"--no-blur-illustration"]);
+			"--no-blur-illustration"]));
 	}
 }
