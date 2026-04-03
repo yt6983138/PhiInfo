@@ -18,8 +18,17 @@ public sealed class ExtractTest
 			File.OpenRead(Helper.TestObbPath),
 			File.OpenRead(Helper.TestClassDataTPKPath));
 
-		PhigrosExtractedDataCollection info = rawExtractor.ExtractAll();
-		Console.WriteLine(info);
+		List<SongInfo> songs = rawExtractor.ExtractSongInfo();
+		List<Folder> collections = rawExtractor.ExtractCollection();
+		List<ChapterInfo> chapters = rawExtractor.ExtractChapters();
+		List<string> tips = rawExtractor.ExtractTips();
+		List<Avatar> avatars = rawExtractor.ExtractAvatars();
+
+		Console.WriteLine(songs[Random.Shared.Next(songs.Count)]);
+		Console.WriteLine(collections[Random.Shared.Next(collections.Count)]);
+		Console.WriteLine(chapters[Random.Shared.Next(chapters.Count)]);
+		Console.WriteLine(tips[Random.Shared.Next(tips.Count)]);
+		Console.WriteLine(avatars[Random.Shared.Next(avatars.Count)]);
 	}
 	[TestMethod]
 	public void Assets()
