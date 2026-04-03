@@ -68,7 +68,7 @@ public class MonoBehaviourFinder : IDisposable
 			AssetTypeTemplateField? template = this.GetTemplateBaseField(file, info, file.Reader, offset, monoFields);
 
 			if (template == null)
-				throw new Exception($"Failed to build template for type {info.TypeId}");
+				throw new InvalidDataException($"Failed to build template for type {info.TypeId}");
 
 			RefTypeManager refMan = new();
 			refMan.FromTypeTree(file.Metadata);
@@ -130,7 +130,9 @@ public class MonoBehaviourFinder : IDisposable
 			// 确定 MonoScript 所在的文件
 			AssetsFile monoScriptFile;
 			if (scriptPtr.FileId == 0)
+			{
 				monoScriptFile = file;
+			}
 			else if (scriptPtr.FileId == 1)
 			{
 				monoScriptFile = this._globalGameManagers;
@@ -157,12 +159,12 @@ public class MonoBehaviourFinder : IDisposable
 					assemblyName,
 					nameSpace,
 					className,
-					new UnityVersion(file.Metadata.UnityVersion));
+					new(file.Metadata.UnityVersion));
 
 			if (newBase != null)
 				baseField = newBase;
 
-		OutAndReset:
+			OutAndReset:
 			// 恢复原始位置
 			reader.Position = originalPosition;
 		}
@@ -173,27 +175,27 @@ public class MonoBehaviourFinder : IDisposable
 	public static uint GetPhiVersion()
 	{
 		Il2CppMetadata meta = LibCpp2IlMain.TheMetadata
-					   ?? throw new Exception("il2cpp 未初始化");
+					   ?? throw new InvalidOperationException("Cpp2Il is not initialized.");
 
 		Il2CppAssemblyDefinition assembly = meta.AssemblyDefinitions
 							   .FirstOrDefault(a => a.AssemblyName.Name == "Assembly-CSharp")
-						   ?? throw new Exception("找不到 Assembly-CSharp");
+						   ?? throw new InvalidDataException("Cannot find Assembly-CSharp.");
 
 		Il2CppTypeDefinition type = assembly.Image.Types?
 						   .FirstOrDefault(t => t.FullName == "Constants")
-					   ?? throw new Exception("找不到 Constants 类");
+					   ?? throw new InvalidDataException("Cannot find Constants class.");
 
 		Il2CppFieldDefinition field = type.Fields?
 							.FirstOrDefault(f => f.Name == "IntVersion")
-						?? throw new Exception("找不到 IntVersion 字段");
+						?? throw new InvalidDataException("Cannot find IntVersion field.");
 
 		object defaultValue = meta.GetFieldDefaultValue(field)?.Value
-							   ?? throw new Exception("字段没有默认值");
+							   ?? throw new InvalidDataException("There is no default value for the IntVersion field.");
 
 		if (defaultValue is int intValue)
 			return (uint)intValue;
 
-		throw new Exception($"版本号类型异常: {defaultValue.GetType()}");
+		throw new InvalidDataException($"Invalid version type: {defaultValue.GetType()}");
 	}
 
 	private bool GetMonoScriptInfo(
@@ -265,9 +267,7 @@ public class MonoBehaviourFinder : IDisposable
 
 	public AssetTypeValueField FindMonoBehaviour(AssetsFile file, string name)
 	{
-		AssetTypeValueField? result = this.TryFindMonoBehaviour(file, name);
-		if (result is null)
-			throw new ArgumentException($"Requested MonoBehaviour not found in the provided file.", nameof(name));
-		return result;
+		return this.TryFindMonoBehaviour(file, name)
+			?? throw new ArgumentException($"Requested MonoBehaviour not found in the provided file.", nameof(name));
 	}
 }
