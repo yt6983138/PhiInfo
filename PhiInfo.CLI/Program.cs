@@ -1,10 +1,12 @@
-﻿using PhiInfo.Core;
+﻿using LibCpp2IL.Logging;
+using PhiInfo.Core;
 using PhiInfo.Core.Models.Information;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Png;
 using System.CommandLine;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 
 namespace PhiInfo.CLI;
 
@@ -96,7 +98,7 @@ public class Program
 	{
 		FileInfo? apkFile = parseResult.GetValue(ApkOption);
 		FileInfo? obbFile = parseResult.GetValue(ObbOption);
-		FileInfo? classDataFile = parseResult.GetValue(ClassDataOption);
+		FileInfo classDataFile = parseResult.GetValue(ClassDataOption)!;
 
 		DirectoryInfo? extractInfoTo = parseResult.GetValue(ExtractInfoOption);
 		DirectoryInfo? extractAssetTo = parseResult.GetValue(ExtractAssetOption);
@@ -107,21 +109,65 @@ public class Program
 		bool noMusic = parseResult.GetValue(NoMusicOption);
 		bool noCharts = parseResult.GetValue(NoChartsOption);
 
+		LibLogger.Writer = new QuietLogWriter(); // tells cpp2il to shut up
+
+		PhigrosRawAssetExtractor? infoExtractor = null;
+		if (apkFile is not null)
+		{
+			infoExtractor = PhigrosRawAssetExtractor.FromApkAndObb(
+				apkFile.OpenRead(),
+				obbFile?.OpenRead(),
+				classDataFile.OpenRead());
+		}
+
 		if (extractInfoTo is not null)
 		{
-			if (apkFile is null || classDataFile is null || obbFile is null)
+			if (apkFile is null || infoExtractor is null)
 			{
-				Console.WriteLine("APK, OBB, and class data file are required for extracting information.");
+				Console.WriteLine("APK file is required for extracting information.");
 				return;
 			}
+			if (obbFile is null)
+				Console.WriteLine("Warning: Collection cannot be extracted because missing obb file.");
 
-			using PhigrosRawAssetExtractor rawExtractor = PhigrosRawAssetExtractor.FromApkAndObb(
-				apkFile.OpenRead(),
-				obbFile.OpenRead(),
-				classDataFile.OpenRead());
+			Console.WriteLine("Extracting information...");
+			PhigrosExtractedDataCollection info = new(
+				infoExtractor.ExtractSongInfo(),
+				obbFile is null ? [] : infoExtractor.ExtractCollection(),
+				infoExtractor.ExtractAvatars(),
+				infoExtractor.ExtractTips(),
+				infoExtractor.ExtractChapters());
 
-			PhigrosExtractedDataCollection info = rawExtractor.ExtractAll();
-			// TODO: output format
+			Console.WriteLine("Writing information...");
+			extractInfoTo.Create();
+			File.WriteAllText(
+				Path.Combine(extractInfoTo.FullName, "info.json"),
+				JsonSerializer.Serialize(info),
+				Encoding.UTF8);
+
+			// PhigrosLibrary_Resource compatible format
+			Console.WriteLine("Writing PhigrosLibrary_Resource compatible information...");
+
+			// i know those string concats are ugly as fuck but lazy to change it rn
+			string avatarTxt = string.Join('\n', info.Avatars.Select(a => a.Name));
+			string collectionTsv = string.Join('\n', info.Collections.SelectMany(x => x.Files).Select(x => $"{x.Key}\t{x.Name}\t{x.SubIndex}"));
+			string difficultyTsv = string.Join('\n', info.Songs
+				.Where(x => !x.Id.Contains("Introduction"))
+				.Select(x => $"{x.Id[..^2]}\t{x.Levels["EZ"].ChartConstant}\t{x.Levels["HD"].ChartConstant}\t{x.Levels["IN"].ChartConstant}{(x.Levels.TryGetValue("AT", out SongLevel? at) ? $"\t{at.ChartConstant}" : "")}"));
+			// TODO: add illustration, single txt
+			string infoTsv = string.Join('\n', info.Songs
+				.Where(x => !x.Id.Contains("Introduction"))
+				.Select(x => $"{x.Id[..^2]}\t{x.Name}\t{x.Illustrator}\t{x.Levels["EZ"].Charter}\t{x.Levels["HD"].Charter}\t{x.Levels["IN"].Charter}{(x.Levels.TryGetValue("AT", out SongLevel? at) ? $"\t{at.Charter}" : "")}"));
+			string tipsTxt = string.Join('\n', info.Tips);
+			// seriously why is it named tmp
+			string tmpTsv = string.Join('\n', info.Avatars.Select(x => $"{x.Name}\t{x.AddressablePath[7..]}"));
+
+			File.WriteAllText(Path.Combine(extractInfoTo.FullName, "avatar.txt"), avatarTxt, Encoding.UTF8);
+			File.WriteAllText(Path.Combine(extractInfoTo.FullName, "collection.tsv"), collectionTsv, Encoding.UTF8);
+			File.WriteAllText(Path.Combine(extractInfoTo.FullName, "difficulty.tsv"), difficultyTsv, Encoding.UTF8);
+			File.WriteAllText(Path.Combine(extractInfoTo.FullName, "info.tsv"), infoTsv, Encoding.UTF8);
+			File.WriteAllText(Path.Combine(extractInfoTo.FullName, "tips.txt"), tipsTxt, Encoding.UTF8);
+			File.WriteAllText(Path.Combine(extractInfoTo.FullName, "tmp.tsv"), tmpTsv, Encoding.UTF8);
 		}
 
 		if (extractAssetTo is not null)
@@ -138,6 +184,20 @@ public class Program
 				return;
 			}
 
+			List<Avatar>? avatars = null;
+
+			if (infoExtractor is not null)
+			{
+				avatars = infoExtractor.ExtractAvatars();
+			}
+			else
+			{
+				Console.WriteLine("Warning: Avatar map will not be generated due to missing apk argument.");
+			}
+
+			const string AvatarBasePath = "Assets/Avatar/";
+
+			Directory.CreateDirectory(GetAssetOutputPath(AvatarBasePath));
 			PngEncoder pngEncoder = new();
 
 			// name -> hash, like "-SURREALISM-": "3da229e009e3edc8a4824ee0dc7aa87e796a7b47"
@@ -156,7 +216,19 @@ public class Program
 					avatarStream.Position = 0;
 
 					string hash = SHA1.HashData(avatarStream).ToHexString();
+					File.WriteAllBytes(GetAssetOutputPath($"{AvatarBasePath}{hash}.png"), avatarStream.ToArray());
 					// TODO: add avatar name mapping, assetPath contains just id
+
+					if (avatars is null) continue;
+
+					Avatar? avatarInfo = avatars.FirstOrDefault(x => x.AddressablePath == assetPath);
+					if (avatarInfo is null)
+					{
+						Console.WriteLine($"Warning: Cannot find avatar info for {assetPath}, skipping mapping.");
+						continue;
+					}
+
+					avatarMap[avatarInfo.Name] = hash;
 
 					continue;
 				}
@@ -169,14 +241,14 @@ public class Program
 				if (assetPath.EndsWith(".wav") && !noMusic)
 				{
 					byte[] music = assetExtractor.GetMusicRaw(assetPath).Decode().ToOggBytes();
-					File.WriteAllBytes(GetAssetOutputPath(assetPath), music);
+					File.WriteAllBytes(GetAssetOutputPath(assetPath).EnsureAssetCanCreate(), music);
 
 					continue;
 				}
 				if (assetPath.EndsWith(".json") && !noCharts)
 				{
 					string content = assetExtractor.GetTextRaw(assetPath).Content;
-					File.WriteAllText(GetAssetOutputPath(assetPath), content, Encoding.UTF8);
+					File.WriteAllText(GetAssetOutputPath(assetPath).EnsureAssetCanCreate(), content, Encoding.UTF8);
 
 					continue;
 				}
@@ -190,13 +262,22 @@ public class Program
 					}
 
 					Image image = assetExtractor.GetImageRaw(assetPath).Decode();
-					image.Save(GetAssetOutputPath($"{assetPath[..^4]}.png"), pngEncoder);
+					image.Save(GetAssetOutputPath($"{assetPath[..^4]}.png").EnsureAssetCanCreate(), pngEncoder);
 
 					continue;
 				}
 
 			Skip:
 				Console.WriteLine($"Skipping {assetPath}.");
+			}
+
+			if (avatars is not null)
+			{
+				Console.WriteLine("Writing AvatarInfo...");
+				File.WriteAllText(
+					Path.Combine(extractAssetTo.FullName, AvatarBasePath, "AvatarInfo.json"),
+					JsonSerializer.Serialize(avatarMap),
+					Encoding.UTF8);
 			}
 		}
 	}

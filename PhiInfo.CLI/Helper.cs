@@ -18,4 +18,18 @@ internal static class Helper
 
 		return new(str);
 	}
+	internal static string EnsureAssetCanCreate(this string outputPath, bool isFile = true)
+	{
+		if (isFile)
+		{
+			string? parentDir = Path.GetDirectoryName(outputPath);
+			ArgumentException.ThrowIfNullOrEmpty(parentDir);
+			Directory.CreateDirectory(parentDir);
+		}
+		else
+		{
+			Directory.CreateDirectory(outputPath);
+		}
+		return outputPath;
+	}
 }
