@@ -1,20 +1,35 @@
 # PhiInfo
-使用`AssetsTools.NET`实现的`Phigros`信息提取
+*This is forked from [here](https://github.com/PhigrosLabs/PhiInfo), and 
+has been modified for asset extraction for 
+[PSLDiscordBot](https://github.com/yt6983138/PSLDiscordBot). Readme has been translated, 
+and code have been refactored/trimmed.*
 
-## 实现
-- [x] 导出所有单曲信息
-- [x] 导出所有收藏品信息
-- [x] 导出所有头像信息
-- [x] 导出所有 Tip 信息
-- [x] 导出所有章节信息
-- [x] 导出所有单曲资源
-- [x] 导出所有收藏品封面资源
-- [x] 导出所有头像资源
-- [x] 导出所有章节资源
+Phigros asset extraction implemented using `AssetsTools.NET`.
 
-## 许可证
-本项目源码在 `2026年3月22日` 后使用 `AGPL-3.0-only` 许可证开源。  
-本项目导出的文件（如单曲资源、收藏品封面、头像等）采用 `CC BY-NC-ND` 许可证，允许非商业使用和分享，但禁止修改。  
-版权归属说明：  
-- 大部分内容版权归 `南京鸽游网络有限公司` 所有。  
-- 部分内容为联动或第三方版权，版权归原版权方所有。  
+## Supported functionalities
+### Informations
+- [x] Extract song informations
+- [x] Extract collections
+- [x] Extract avatar informations
+- [x] Extract tips
+- [x] Extract chapter informations
+### Resources
+- [x] Extract all song resources (music, cover images, charts)
+- [x] Extract all collection resources (cover images)
+- [x] Extract all avatar resources (avatar images, name to hash map)
+- [x] Extract all chapter resources (cover images)
+### CLI
+
+
+## License
+Extracted resources are copyrighted by `南京鸽游网络有限公司` aka `Pigeon Games` and 
+their own authors, I do not own any of the resources, and I am not responsible 
+for any legal issues caused by using these resources.
+
+If `南京鸽游网络有限公司` aka `Pigeon Games`, or any other copyright holders, have any 
+issues with this project, please contact me.
+
+### After 2026/03/22
+Open sourced under `AGPL-3.0-only` license.
+### Before 2026/03/22
+Open sourced under `MIT` license.
