@@ -157,7 +157,9 @@ public class InfoExtractor : IDisposable
 					double diff = difficultiesArray[i].AsDouble;
 					if (diff == 0) continue;
 
-					Difficulty difficulty = Enum.Parse<Difficulty>(levelsArray[i].AsString);
+					if (!Enum.TryParse(levelsArray[i].AsString, out Difficulty difficulty))
+						continue; // TODO: legacy and sp support
+
 					string charter = chartersArray[i].AsString;
 					int allCombo = i < allComboNum.Count ? allComboNum[i] : 0; // TODO: fix some songs have combo count of 0
 
