@@ -20,13 +20,4 @@
 	  <ProjectReference Include="..\PhiInfo.CLI\PhiInfo.CLI.csproj" />
 	</ItemGroup>
 
-	<ItemGroup>
-	  <None Update="TestData\base.apk">
-	    <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-	  </None>
-	  <None Update="TestData\classdata.tpk">
-	    <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-	  </None>
-	</ItemGroup>
-
 </Project>

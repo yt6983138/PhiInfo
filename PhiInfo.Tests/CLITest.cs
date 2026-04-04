@@ -15,6 +15,19 @@ public class CLITest
 			"--language", "English"]));
 	}
 	[TestMethod]
+	public void InformationAuto()
+	{
+		Helper.EnsureWorkingDirectory();
+		Assert.AreEqual(0, CLI.Program.Main([
+			"--download-apk", "TAPTAP",
+			"--download-classdata", "AUTO",
+			"--apk", Helper.TestApkPath + ".tmp",
+			"--obb", Helper.TestObbPath + ".tmp",
+			"--classdata", Helper.TestClassDataTPKPath + ".tmp",
+			"--extract-info-to", "./TestData/ExtractedInfoAuto",
+			"--language", "English"]));
+	}
+	[TestMethod]
 	public void Asset()
 	{
 		Helper.EnsureWorkingDirectory();
