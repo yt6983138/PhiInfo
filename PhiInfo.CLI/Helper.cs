@@ -1,6 +1,10 @@
 ﻿namespace PhiInfo.CLI;
 internal static class Helper
 {
+	internal static T EnsureNotNull<T>(this T? value, string? paramName = null) where T : class
+	{
+		return value ?? throw new ArgumentNullException(paramName);
+	}
 	/// <summary>
 	/// intended for short byte arrays
 	/// </summary>

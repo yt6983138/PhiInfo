@@ -1,10 +1,13 @@
 ﻿using LibCpp2IL.Logging;
+using PhigrosLibraryCSharp.GameRecords;
+using PhiInfo.Core.Cpp2ILLogWriter;
 using PhiInfo.Core.Extraction;
 using PhiInfo.Core.Models;
 using PhiInfo.Core.Models.Information;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Png;
 using System.CommandLine;
+using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -18,6 +21,26 @@ public class Program
 		List<ChapterInfo> Chapters);
 	private record struct MultiLanguageInfos(List<Folder>? Collections,
 		List<string> Tips);
+
+	private static readonly Option<string> DownloadApkOption = new("--download-apk")
+	{
+		Description = """
+			Download APK from specified URL, or fill "TAPTAP" for to pick the source from TapTap.
+			TapTap downloading will not contain OBB since TapTap put everything in APK.
+			Specifying this option will use the --apk option as the download destination, 
+			if it is not specified, the APK will be downloaded to temporary directory.
+			""",
+		Required = false
+	};
+	private static readonly Option<string> DownloadClassDataOption = new("--download-classdata")
+	{
+		Description = """
+			Download classdata.tpk from specified URL, or fill "AUTO" to pick the source automatically.
+			Specifying this option will use the --classdata option as the download destination, 
+			if it is not specified, the classdata.tpk will be downloaded to temporary directory.
+			""",
+		Required = false
+	};
 
 	private static readonly Option<FileInfo> ApkOption = new("--apk")
 	{
@@ -86,6 +109,8 @@ public class Program
 
 	private static readonly List<Option> Options =
 	[
+		DownloadApkOption,
+		DownloadClassDataOption,
 		ApkOption,
 		ObbOption,
 		AuxObbOption,
@@ -117,6 +142,9 @@ public class Program
 
 	private static void AfterArgumentParsed(ParseResult parseResult)
 	{
+		string? downloadApk = parseResult.GetValue(DownloadApkOption);
+		string? downloadClassData = parseResult.GetValue(DownloadClassDataOption);
+
 		FileInfo? apkFile = parseResult.GetValue(ApkOption);
 		FileInfo? obbFile = parseResult.GetValue(ObbOption);
 		FileInfo? auxObbFile = parseResult.GetValue(AuxObbOption);
@@ -130,6 +158,53 @@ public class Program
 		bool noBlurIllustration = parseResult.GetValue(NoBlurIllustrationOption);
 		bool noMusic = parseResult.GetValue(NoMusicOption);
 		bool noCharts = parseResult.GetValue(NoChartsOption);
+
+		if (downloadApk is not null)
+		{
+			using HttpClient client = new();
+
+			string apkUrl = downloadApk == "TAPTAP" ?
+				TapTapDownloader.GetApkLatestUrl(client) : downloadApk;
+			string apkDestination = apkFile?.FullName ?? Path.Combine(Path.GetTempPath(), "phigros_latest.apk");
+
+			Console.WriteLine($"Downloading APK from {apkUrl} to {apkDestination}...");
+
+			apkFile = new(apkDestination);
+			obbFile = new(apkDestination);
+			auxObbFile = null;
+
+			using Stream apkStream = apkFile.Open(FileMode.Create, FileAccess.Write);
+			using Stream downloaded = client.GetStreamAsync(apkUrl).GetAwaiter().GetResult();
+			downloaded.CopyTo(apkStream);
+
+			Console.WriteLine("APK downloaded.");
+		}
+
+		if (downloadClassData is not null)
+		{
+			using HttpClient client = new();
+
+			classDataFile = new(classDataFile?.FullName ?? Path.Combine(Path.GetTempPath(), "classdata.tpk"));
+			using FileStream classDataStream = classDataFile.Open(FileMode.Create, FileAccess.Write);
+
+			if (downloadClassData == "AUTO")
+			{
+				using ZipArchive archive = new(
+					client.GetStreamAsync("https://nightly.link/AssetRipper/Tpk/workflows/type_tree_tpk/master/uncompressed_file.zip")
+						.GetAwaiter().GetResult());
+
+				using Stream classDataEntryStream = archive.GetEntry("uncompressed.tpk").EnsureNotNull().Open();
+
+				classDataEntryStream.CopyTo(classDataStream);
+			}
+			else
+			{
+				Console.WriteLine($"Downloading classdata.tpk from {downloadClassData} to {classDataFile.FullName}...");
+				using Stream downloaded = client.GetStreamAsync(downloadClassData).GetAwaiter().GetResult();
+				downloaded.CopyTo(classDataStream);
+			}
+			Console.WriteLine("classdata.tpk downloaded.");
+		}
 
 		Language language = parseResult.GetValue(LanguageOption);
 
@@ -185,11 +260,11 @@ public class Program
 				.Select(x => $"{x.Key}\t{x.Name}\t{x.SubIndex}"));
 			string difficultyTsv = string.Join('\n', songs
 				.Where(x => !x.Id.Contains("Introduction"))
-				.Select(x => $"{x.Id[..^2]}\t{x.Levels["EZ"].ChartConstant}\t{x.Levels["HD"].ChartConstant}\t{x.Levels["IN"].ChartConstant}{(x.Levels.TryGetValue("AT", out SongLevel? at) ? $"\t{at.ChartConstant}" : "")}"));
+				.Select(x => $"{x.Id[..^2]}\t{x.Levels[Difficulty.EZ].ChartConstant}\t{x.Levels[Difficulty.HD].ChartConstant}\t{x.Levels[Difficulty.IN].ChartConstant}{(x.Levels.TryGetValue(Difficulty.AT, out SongLevel? at) ? $"\t{at.ChartConstant}" : "")}"));
 			// TODO: add illustration, single txt
 			string infoTsv = string.Join('\n', songs
 				.Where(x => !x.Id.Contains("Introduction"))
-				.Select(x => $"{x.Id[..^2]}\t{x.Name}\t{x.Illustrator}\t{x.Levels["EZ"].Charter}\t{x.Levels["HD"].Charter}\t{x.Levels["IN"].Charter}{(x.Levels.TryGetValue("AT", out SongLevel? at) ? $"\t{at.Charter}" : "")}"));
+				.Select(x => $"{x.Id[..^2]}\t{x.Name}\t{x.Illustrator}\t{x.Levels[Difficulty.EZ].Charter}\t{x.Levels[Difficulty.HD].Charter}\t{x.Levels[Difficulty.IN].Charter}{(x.Levels.TryGetValue(Difficulty.AT, out SongLevel? at) ? $"\t{at.Charter}" : "")}"));
 			string tipsTxt = string.Join('\n', tips);
 			// seriously why is it named tmp
 			string tmpTsv = string.Join('\n', avatars.Select(x => $"{x.Name}\t{x.AddressablePath[7..]}"));
