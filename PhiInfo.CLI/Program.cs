@@ -264,7 +264,7 @@ public class Program
 			// TODO: add illustration, single txt
 			string infoTsv = string.Join('\n', songs
 				.Where(x => !x.Id.Contains("Introduction"))
-				.Select(x => $"{x.Id[..^2]}\t{x.Name}\t{x.Illustrator}\t{x.Levels[Difficulty.EZ].Charter}\t{x.Levels[Difficulty.HD].Charter}\t{x.Levels[Difficulty.IN].Charter}{(x.Levels.TryGetValue(Difficulty.AT, out SongLevel? at) ? $"\t{at.Charter}" : "")}"));
+				.Select(x => $"{x.Id[..^2]}\t{x.Name}\t{x.Composer}\t{x.Illustrator}\t{x.Levels[Difficulty.EZ].Charter}\t{x.Levels[Difficulty.HD].Charter}\t{x.Levels[Difficulty.IN].Charter}{(x.Levels.TryGetValue(Difficulty.AT, out SongLevel? at) ? $"\t{at.Charter}" : "")}"));
 			string tipsTxt = string.Join('\n', tips);
 			// seriously why is it named tmp
 			string tmpTsv = string.Join('\n', avatars.Select(x => $"{x.Name}\t{x.AddressablePath[7..]}"));
