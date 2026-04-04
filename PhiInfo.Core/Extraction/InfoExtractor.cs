@@ -123,22 +123,7 @@ public class InfoExtractor : IDisposable
 		List<SongInfo> result = [];
 
 		AssetTypeValueField gameInfoField = this._monoBehaviourFinder.FindMonoBehaviour(this._level0, "GameInformation");
-
 		AssetTypeValueField songField = gameInfoField["song"];
-		AssetTypeValueField comboArray = gameInfoField["songAllCombos"]["Array"];
-
-		Dictionary<string, List<int>> comboDict = [];
-		foreach (AssetTypeValueField combo in comboArray)
-		{
-			AssetTypeValueField allComboField = combo["allComboNum"]["Array"];
-
-			List<int> allComboList = allComboField
-				.Select(x => x.AsInt)
-				.ToList();
-
-			string songId = combo["songsId"].AsString;
-			comboDict[songId] = allComboList;
-		}
 
 		foreach (AssetTypeValueField songArrayField in songField)
 		{
@@ -151,21 +136,18 @@ public class InfoExtractor : IDisposable
 				AssetTypeValueField difficultiesArray = song["difficulty"]["Array"];
 
 				Dictionary<Difficulty, SongLevel> levelsDict = [];
-				List<int> allComboNum = comboDict.TryGetValue(songId, out List<int>? value) ? value : [];
 				for (int i = 0; i < difficultiesArray.Children.Count; i++)
 				{
 					double diff = difficultiesArray[i].AsDouble;
 					if (diff == 0) continue;
 
 					if (!Enum.TryParse(levelsArray[i].AsString, out Difficulty difficulty))
-						continue; // TODO: legacy and sp support
+						continue;
 
 					string charter = chartersArray[i].AsString;
-					int allCombo = i < allComboNum.Count ? allComboNum[i] : 0; // TODO: fix some songs have combo count of 0
 
 					levelsDict[difficulty] = new SongLevel(
 						charter,
-						allCombo,
 						Math.Round(diff, 1)
 					);
 				}
