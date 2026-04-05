@@ -10,7 +10,7 @@
 		<UseAppHost>false</UseAppHost>
 		<InvariantGlobalization>true</InvariantGlobalization>
 
-		<Version>1.0.1</Version>
+		<Version>0.1.0</Version>
 		<GitHash>dev</GitHash>
 		<InformationalVersion>$(Version)+$(GitHash)</InformationalVersion>
 		<IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
