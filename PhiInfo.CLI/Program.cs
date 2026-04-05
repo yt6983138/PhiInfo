@@ -149,7 +149,7 @@ public class Program
 
 	private static volatile bool _isDoingWork = false;
 	private static ConcurrentQueue<string> _logQueue = new();
-	private static ConcurrentQueue<Task> _processQueue = new();
+	private static ConcurrentQueue<Task<string?>> _processQueue = new();
 
 	public static int Main(string[] args)
 	{
@@ -385,14 +385,15 @@ public class Program
 				string sanitizedAssetPath = assetPath.Replace('/', Path.DirectorySeparatorChar);
 				return Path.Combine(extractAssetTo.FullName, sanitizedAssetPath);
 			}
-			async Task ProcessCore(string assetPath)
+			// returns processed asset path for logging, or empty if skipped
+			async Task<string?> ProcessCore(string assetPath)
 			{
-				_logQueue.Enqueue($"Extracting {assetPath}...");
+				void LogQueuing()
+					=> _logQueue.Enqueue($"Queuing {assetPath} extraction...");
 
 				if (assetPath.StartsWith("avatar"))
 				{
-					_logQueue.Enqueue($"Extracting {assetPath}...");
-
+					LogQueuing();
 					Image avatar = (await assetExtractor.GetImageRawAsync(assetPath)).Decode();
 
 					using MemoryStream avatarStream = new();
@@ -403,18 +404,18 @@ public class Program
 					await File.WriteAllBytesAsync(GetAssetOutputPath($"{AvatarBasePath}{hash}.png"), avatarStream.ToArray());
 
 					if (avatars is null)
-						return;
+						goto Return;
 
 					Avatar? avatarInfo = avatars.FirstOrDefault(x => x.AddressablePath == assetPath);
 					if (avatarInfo is null)
 					{
 						_logQueue.Enqueue($"Warning: Cannot find avatar info for {assetPath}, skipping mapping.");
-						return;
+						goto Return;
 					}
 
 					avatarMap[avatarInfo.Name] = hash;
 
-					return;
+					goto Return;
 				}
 
 				if (!assetPath.StartsWith("Assets/"))
@@ -422,19 +423,19 @@ public class Program
 
 				if (assetPath.EndsWith(".wav") && !noMusic)
 				{
-					_logQueue.Enqueue($"Extracting {assetPath}...");
+					LogQueuing();
 					byte[] music = (await assetExtractor.GetMusicRawAsync(assetPath)).Decode().ToOggBytes();
 					await File.WriteAllBytesAsync(GetAssetOutputPath($"{assetPath[..^4]}.ogg").EnsureAssetCanCreate(), music);
 
-					return;
+					goto Return;
 				}
 				if (assetPath.EndsWith(".json") && !noCharts)
 				{
-					_logQueue.Enqueue($"Extracting {assetPath}...");
+					LogQueuing();
 					string content = (await assetExtractor.GetTextRawAsync(assetPath)).Content;
 					await File.WriteAllTextAsync(GetAssetOutputPath(assetPath).EnsureAssetCanCreate(), content, Encoding.UTF8);
 
-					return;
+					goto Return;
 				}
 
 				if ((assetPath.Contains("/Illustration.") && noIllustration)
@@ -446,23 +447,25 @@ public class Program
 
 				if (assetPath.EndsWith(".jpg") || assetPath.EndsWith(".png"))
 				{
-					_logQueue.Enqueue($"Extracting {assetPath}...");
-
+					LogQueuing();
 					Image image = (await assetExtractor.GetImageRawAsync(assetPath)).Decode();
 					await image.SaveAsync(GetAssetOutputPath($"{assetPath[..^4]}.png").EnsureAssetCanCreate(), pngEncoder);
 
-					return;
+					goto Return;
 				}
 
 			Skip:
 				_logQueue.Enqueue($"Skipping {assetPath}.");
+				return null;
+			Return:
+				return assetPath;
 			}
 		}
 	}
 
 	private static async Task DequeueLogsAsync()
 	{
-		while (_isDoingWork)
+		while (_isDoingWork || !_logQueue.IsEmpty || !_processQueue.IsEmpty)
 		{
 			while (_logQueue.TryDequeue(out string? log))
 			{
@@ -473,11 +476,13 @@ public class Program
 	}
 	private static async Task WaitForProcessesAsync()
 	{
-		while (_isDoingWork)
+		while (_isDoingWork || !_processQueue.IsEmpty)
 		{
-			while (_processQueue.TryDequeue(out Task? process))
+			while (_processQueue.TryDequeue(out Task<string?>? process))
 			{
-				await process;
+				string? processed = await process;
+				if (processed is not null)
+					_logQueue.Enqueue($"Processed {processed}.");
 			}
 		}
 	}
