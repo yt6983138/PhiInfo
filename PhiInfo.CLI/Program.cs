@@ -22,6 +22,8 @@ public class Program
 	private record struct MultiLanguageInfos(List<Folder>? Collections,
 		List<string> Tips);
 
+	private const Language AllLanguage = unchecked((Language)0xFFFFFFFF);
+
 	private static readonly Option<string> DownloadApkOption = new("--download-apk")
 	{
 		Description = """
@@ -100,11 +102,30 @@ public class Program
 		Required = false
 	};
 
-	private static readonly Option<Language> LanguageOption = new("--language") // TODO: accept extract all languages if "All" is specified
+	private static readonly Option<Language> LanguageOption = new("--language")
 	{
-		Description = "Extract collections and tips using language",
+		Description = """
+			Extract collections and tips using language. If All is specified, all language
+			will be extracted. However, Phigros_Resource compatible format will always be extracted 
+			using English since it does not support multiple languages.
+			""",
 		Required = false,
-		DefaultValueFactory = _ => Language.Chinese
+		CustomParser = result =>
+		{
+			if (result.Tokens.Count == 0)
+				return Language.English;
+			string token = result.Tokens[0].Value;
+
+			if (token == "All")
+				return AllLanguage;
+
+			if (Enum.TryParse(token, out Language language))
+			{
+				return language;
+			}
+			result.AddError($"Failed to parse language. Valid values: {string.Join(", ", Enum.GetValues<Language>().Select(x => x.ToString()).Concat(["All"]))}");
+			return default;
+		}
 	};
 
 	private static readonly List<Option> Options =
@@ -218,7 +239,10 @@ public class Program
 				obbFile?.OpenRead(),
 				classDataFile.OpenRead());
 
-			infoExtractor.ExtractLanguage = language;
+			infoExtractor.ExtractLanguage = language == AllLanguage ? Language.English : language;
+			// prevents info extractor from being confused by multiple languages since the enum is custom defined,
+			// it will be set in the info extraction part if All is specified, setting English here prevents potential
+			// problems in asset extraction part
 		}
 
 		if (extractInfoTo is not null)
@@ -231,25 +255,35 @@ public class Program
 			if (obbFile is null)
 				Console.WriteLine("Warning: Collection cannot be extracted because missing obb file.");
 
-			Console.WriteLine("Extracting information...");
+			Console.WriteLine("Extracting non-multi-language information...");
 			List<SongInfo> songs = infoExtractor.ExtractSongInfo();
-			List<Folder>? collections = obbFile is null ? null : infoExtractor.ExtractCollection();
 			List<Avatar> avatars = infoExtractor.ExtractAvatars();
-			List<string> tips = infoExtractor.ExtractTips();
 			List<ChapterInfo> chapters = infoExtractor.ExtractChapters();
 
+			// those 2 are language specific, they are needed for Phigros_Resource compatible format,
+			// so extract them first even they are set to default, before the language specific extraction
+			// (i don't care about all languages for compatibility formats)
+			List<string> tips = infoExtractor.ExtractTips();
+			List<Folder>? collections = obbFile is null ? null : infoExtractor.ExtractCollection();
 
-			Console.WriteLine("Writing information...");
+			Console.WriteLine("Writing non-multi-language information...");
 			extractInfoTo.Create();
 			File.WriteAllText(
 				Path.Combine(extractInfoTo.FullName, "info.json"),
 				JsonSerializer.Serialize(new NonMultiLanguageInfos(songs, avatars, chapters)),
 				Encoding.UTF8);
-			File.WriteAllText(
-				Path.Combine(extractInfoTo.FullName, $"tipsAndCollections_{language}.json"),
-				JsonSerializer.Serialize(new MultiLanguageInfos(collections, tips)),
-				Encoding.UTF8);
 
+			if (language == AllLanguage)
+			{
+				foreach (Language lang in Enum.GetValues<Language>())
+				{
+					ExtractLanguageSpecificInfo(lang);
+				}
+			}
+			else
+			{
+				ExtractLanguageSpecificInfo(language);
+			}
 
 			// PhigrosLibrary_Resource compatible format
 			Console.WriteLine("Writing PhigrosLibrary_Resource compatible information...");
@@ -276,6 +310,21 @@ public class Program
 			File.WriteAllText(Path.Combine(extractInfoTo.FullName, "tmp.tsv"), tmpTsv, Encoding.UTF8);
 			if (collectionTsv is not null)
 				File.WriteAllText(Path.Combine(extractInfoTo.FullName, "collection.tsv"), collectionTsv, Encoding.UTF8);
+
+			void ExtractLanguageSpecificInfo(Language lang)
+			{
+				infoExtractor.ExtractLanguage = lang;
+
+				Console.WriteLine($"Extracting language specific information for {lang}...");
+				List<string> tips = infoExtractor.ExtractTips();
+				List<Folder>? collections = obbFile is null ? null : infoExtractor.ExtractCollection();
+
+				Console.WriteLine($"Writing language specific information for {lang}...");
+				File.WriteAllText(
+					Path.Combine(extractInfoTo.FullName, $"tipsAndCollections_{lang}.json"),
+					JsonSerializer.Serialize(new MultiLanguageInfos(collections, tips)),
+					Encoding.UTF8);
+			}
 		}
 
 		if (extractAssetTo is not null)

@@ -12,7 +12,7 @@ public class CLITest
 			"--obb", Helper.TestObbPath,
 			"--classdata", Helper.TestClassDataTPKPath,
 			"--extract-info-to", "./TestData/ExtractedInfo",
-			"--language", "English"]));
+			"--language", "All"]));
 	}
 	[TestMethod]
 	public void InformationAuto()
