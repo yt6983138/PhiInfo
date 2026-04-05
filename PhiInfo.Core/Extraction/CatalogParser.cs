@@ -5,7 +5,6 @@ using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 
 namespace PhiInfo.Core.Extraction;
 
@@ -41,31 +40,17 @@ public class CatalogParser
 				Convert.FromBase64String(bucketDataString),
 				Convert.FromBase64String(entryDataString));
 	}
-	public static CatalogParser FromJson(Stream json)
+	public static async Task<CatalogParser> FromJsonAsync(Stream json, CancellationToken ct = default)
 	{
-		RawCatalogModel? data = JsonSerializer.Deserialize(json, CatalogModelJsonContext.Default.RawCatalogModel);
+		RawCatalogModel? data = await JsonSerializer.DeserializeAsync(json, CatalogModelJsonContext.Default.RawCatalogModel, ct);
 		EnsureCatalogModelNotNull(data, nameof(json));
 
 		return FromBase64Strings(data.KeyDataString, data.BucketDataString, data.EntryDataString);
 	}
-	public static CatalogParser FromJson(string json)
-	{
-		RawCatalogModel? data = JsonSerializer.Deserialize(json, CatalogModelJsonContext.Default.RawCatalogModel);
-		EnsureCatalogModelNotNull(data, nameof(json));
-
-		return FromBase64Strings(data.KeyDataString, data.BucketDataString, data.EntryDataString);
-	}
-	public static CatalogParser FromJson(JsonObject obj)
-	{
-		RawCatalogModel? data = obj.Deserialize(CatalogModelJsonContext.Default.RawCatalogModel);
-		EnsureCatalogModelNotNull(data, nameof(obj));
-
-		return FromBase64Strings(data.KeyDataString, data.BucketDataString, data.EntryDataString);
-	}
-	public static CatalogParser FromObb(Stream obb)
+	public static async Task<CatalogParser> FromObbAsync(Stream obb, CancellationToken ct = default)
 	{
 		using Stream catalogStream = PhigrosAssetHelper.GetCatalogStreamFromObb(obb);
-		return FromJson(catalogStream);
+		return await FromJsonAsync(catalogStream, ct);
 	}
 
 	public CatalogValue? Get(CatalogKey key)

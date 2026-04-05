@@ -6,7 +6,7 @@ using System.Text.Json.Nodes;
 namespace PhiInfo.CLI;
 public class TapTapDownloader
 {
-	public static string GetApkLatestUrl(HttpClient client, int appId = 165287)
+	public static async Task<string> GetApkLatestUrlAsync(HttpClient client, int appId = 165287)
 	{
 		Guid guid = Guid.NewGuid();
 		string xUA = $"V=1&PN=TapTap&VN=2.40.1-rel.100000&VN_CODE=240011000&LOC=CN&LANG=zh_CN&CH=default&UID={guid}&NT=1&SR=1080x2030&DEB=Xiaomi&DEM=Redmi+Note+5&OSV=9";
@@ -20,7 +20,8 @@ public class TapTapDownloader
 				{ "User-Agent", "okhttp/3.12.1" }
 			}
 		};
-		JsonNode detailV2Response = JsonNode.Parse(client.Send(detailV2Request).Content.ReadAsStream()).EnsureNotNull();
+		JsonNode detailV2Response = (await JsonNode.ParseAsync(await (await client.SendAsync(detailV2Request)).Content.ReadAsStreamAsync()))
+			.EnsureNotNull();
 
 		int apkId = detailV2Response["data"]
 			.EnsureNotNull()["download"]
@@ -58,8 +59,13 @@ public class TapTapDownloader
 				{ "User-Agent", "okhttp/3.12.1" }
 			}
 		};
-		JsonNode detailV1Response = JsonNode.Parse(client.Send(detailV1Request).Content.ReadAsStream()).EnsureNotNull();
+		JsonNode detailV1Response = (await JsonNode.ParseAsync(await (await client.SendAsync(detailV1Request)).Content.ReadAsStreamAsync()))
+			.EnsureNotNull();
 
-		return detailV1Response["data"].EnsureNotNull()["apk"].EnsureNotNull()["download"].EnsureNotNull().GetValue<string>();
+		return detailV1Response["data"]
+			.EnsureNotNull()["apk"]
+			.EnsureNotNull()["download"]
+			.EnsureNotNull()
+			.GetValue<string>();
 	}
 }

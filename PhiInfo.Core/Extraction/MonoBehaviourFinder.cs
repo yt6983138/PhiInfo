@@ -223,6 +223,9 @@ public class MonoBehaviourFinder : IDisposable
 
 	public AssetTypeValueField? TryFindMonoBehaviour(AssetsFile file, string name)
 	{
+		if (this._disposed)
+			throw new ObjectDisposedException(nameof(MonoBehaviourFinder));
+
 		foreach (AssetFileInfo? info in file.AssetInfos)
 		{
 			if (info.TypeId != (int)AssetClassID.MonoBehaviour)

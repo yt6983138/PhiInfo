@@ -9,7 +9,7 @@ namespace PhiInfo.Core.Extraction;
 
 /// <summary>
 /// Extracts information from Phigros assets. Please see warning at 
-/// <see cref="InfoExtractor.InfoExtractor(Stream, Stream, Stream?, byte[], byte[], Stream)"/>.
+/// <see cref="InfoExtractor(Stream, Stream, Stream?, byte[], byte[], Stream)"/>.
 /// </summary>
 public class InfoExtractor : IDisposable
 {
@@ -107,20 +107,19 @@ public class InfoExtractor : IDisposable
 	/// <param name="obb">Obb file stream.</param>
 	/// <param name="classDataTPK">Class data database file. See <see cref="InfoExtractor(Stream, Stream, Stream?, byte[], byte[], Stream)"/> 
 	/// classDataTpk param.</param>
+	/// <param name="ct">Cancellation token.</param>
 	/// <returns>A constructed <see cref="InfoExtractor"/>.</returns>
-	public static InfoExtractor FromApkAndObb(Stream apk, Stream? obb, Stream classDataTPK)
+	public static async Task<InfoExtractor> FromApkAndObbAsync(Stream apk, Stream? obb, Stream classDataTPK, CancellationToken ct = default)
 	{
-		PhigrosAssetHelper.GetInformationExtractionRequiredData(apk,
-			out Stream globalGameManagers,
-			out Stream level0,
-			out byte[] il2CppSo,
-			out byte[] globalMetadata);
+		(Stream GlobalGameManagers, Stream Level0, byte[] Il2CppSo, byte[] GlobalMetadata) =
+			await PhigrosAssetHelper.GetInformationExtractionRequiredDataAsync(apk, ct);
+
 		return new InfoExtractor(
-			globalGameManagers,
-			level0,
-			obb is null ? null : PhigrosAssetHelper.GetLevel22FromObb(obb),
-			il2CppSo,
-			globalMetadata,
+			GlobalGameManagers,
+			Level0,
+			obb is null ? null : await PhigrosAssetHelper.GetLevel22FromObbAsync(obb, ct),
+			Il2CppSo,
+			GlobalMetadata,
 			classDataTPK
 		);
 	}
@@ -139,6 +138,7 @@ public class InfoExtractor : IDisposable
 		this._monoBehaviourFinder.Dispose();
 	}
 
+#pragma warning disable CA1822 // Mark members as static
 	/// <summary>
 	/// Get the Phigros version in integer form. This is intentionally made static as it requires
 	/// Cpp2Il to be initialized (which is done when newing a instance of this class).
@@ -197,6 +197,7 @@ public class InfoExtractor : IDisposable
 
 		throw new InvalidDataException($"Invalid RegionType type: {defaultValue?.GetType()}");
 	}
+#pragma warning restore CA1822 // Mark members as static
 
 	public List<SongInfo> ExtractSongInfo()
 	{
@@ -250,7 +251,7 @@ public class InfoExtractor : IDisposable
 		return result;
 	}
 
-	public List<Folder> ExtractCollection()
+	public List<Folder> ExtractCollections()
 	{
 		if (this._level22 is null)
 			throw new InvalidOperationException("Level22 asset is required to extract collection data");

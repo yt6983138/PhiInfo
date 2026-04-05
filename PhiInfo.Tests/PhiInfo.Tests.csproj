@@ -20,4 +20,8 @@
 	  <ProjectReference Include="..\PhiInfo.CLI\PhiInfo.CLI.csproj" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <Folder Include="TestData\ExtractedAsset\" />
+	</ItemGroup>
+
 </Project>
