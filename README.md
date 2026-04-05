@@ -19,7 +19,30 @@ Phigros asset extraction implemented using `AssetsTools.NET`.
 - [x] Extract all avatar resources (avatar images, name to hash map)
 - [x] Extract all chapter resources (cover images)
 ### CLI
+Different to the original project, this project extract to local only and does not 
+spin up a http server, so there is no API endpoint. Instead, the CLI has the following
+options:
 
+| Name | Valid values | Default value | Description |
+| --- | --- | --- | --- |
+| `--download-apk` | `<url>`, `TAPTAP` | | Download APK from URL or TapTap to the `--apk` path or temp dir. |
+| `--download-classdata` | `<url>`, `AUTO` | | Download classdata.tpk from URL or automatically to `--classdata` path or temp dir. |
+| `--apk` | `<path>` | | Path to the APK file. |
+| `--obb` | `<path>` | | Path to the OBB file. |
+| `--aux-obb` | `<path>` | | Path to the auxiliary OBB file. |
+| `--classdata` | `<path>` | | Path to the class data TPK file. |
+| `--extract-info-to` | `<path>` | | Directory to extract Phigros information. |
+| `--extract-asset-to`| `<path>` | | Directory to extract Phigros assets. |
+| `--no-illustration` | | `false` | Do not extract high-resolution illustrations. |
+| `--no-low-res-illustration`| | `false` | Do not extract low-resolution illustrations. |
+| `--no-blur-illustration` | | `false` | Do not extract blurred illustrations. |
+| `--no-music` | | `false` | Do not extract music. |
+| `--no-charts` | | `false` | Do not extract charts. |
+| `--language` | `Chinese`, `English`, `Japanese`, `Korean`, `TraditionalChinese`, `All` | | Target language for extracting collections and tips. |
+| `-?, -h, --help` | | | Show help and usage information. |
+| `--version` | | | Show version information. |
+
+More detail can be found in the CLI help message.
 
 ## License
 Extracted resources are copyrighted by `南京鸽游网络有限公司` aka `Pigeon Games` and 
