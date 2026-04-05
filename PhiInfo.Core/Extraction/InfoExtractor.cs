@@ -159,7 +159,7 @@ public class InfoExtractor : IDisposable
 		throw new InvalidDataException($"Invalid version type: {defaultValue?.GetType()}");
 	}
 	/// <summary>
-	/// Get the Phigros version in string form. This is intentionally made static as it requires
+	/// Get the Phigros version in string form. This is intentionally made not static as it requires
 	/// Cpp2Il to be initialized (which is done when newing a instance of this class).
 	/// </summary>
 	/// <returns>Phigros version in string form.</returns>
@@ -179,7 +179,7 @@ public class InfoExtractor : IDisposable
 	}
 	/// <summary>
 	/// Get the Phigros <c>RegionType</c>, if it's <c>RegionType.IO</c> (international), this will return true. 
-	/// This is intentionally made static as it requires Cpp2Il to be initialized (which is done when 
+	/// This is intentionally made not static as it requires Cpp2Il to be initialized (which is done when 
 	/// newing a instance of this class).
 	/// </summary>
 	/// <returns>This package of Phigros is international or not.</returns>
