@@ -2,7 +2,6 @@
 using AssetsTools.NET.Cpp2IL;
 using AssetsTools.NET.Extra;
 using LibCpp2IL;
-using LibCpp2IL.Metadata;
 using System.Diagnostics.CodeAnalysis;
 
 namespace PhiInfo.Core.Extraction;
@@ -184,39 +183,6 @@ public class MonoBehaviourFinder : IDisposable
 		}
 
 		return baseField;
-	}
-
-	/// <summary>
-	/// Get the Phigros version in integer form.
-	/// </summary>
-	/// <returns>Phigros version in integer form.</returns>
-	/// <exception cref="InvalidOperationException">Thrown if Cpp2Il is not initialized. It is initialized when
-	/// anything new a instance of <see cref="MonoBehaviourFinder"/>.</exception>
-	/// <exception cref="InvalidDataException">Thrown if failed to find Phigros version data.</exception>
-	public static uint GetPhiVersion()
-	{
-		Il2CppMetadata meta = LibCpp2IlMain.TheMetadata
-					   ?? throw new InvalidOperationException("Cpp2Il is not initialized.");
-
-		Il2CppAssemblyDefinition assembly = meta.AssemblyDefinitions
-							   .FirstOrDefault(a => a.AssemblyName.Name == "Assembly-CSharp")
-						   ?? throw new InvalidDataException("Cannot find Assembly-CSharp.");
-
-		Il2CppTypeDefinition type = assembly.Image.Types?
-						   .FirstOrDefault(t => t.FullName == "Constants")
-					   ?? throw new InvalidDataException("Cannot find Constants class.");
-
-		Il2CppFieldDefinition field = type.Fields?
-							.FirstOrDefault(f => f.Name == "IntVersion")
-						?? throw new InvalidDataException("Cannot find IntVersion field.");
-
-		object defaultValue = meta.GetFieldDefaultValue(field)?.Value
-							   ?? throw new InvalidDataException("There is no default value for the IntVersion field.");
-
-		if (defaultValue is int intValue)
-			return (uint)intValue;
-
-		throw new InvalidDataException($"Invalid version type: {defaultValue.GetType()}");
 	}
 
 	private bool GetMonoScriptInfo(

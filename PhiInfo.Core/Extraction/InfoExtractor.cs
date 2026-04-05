@@ -1,4 +1,6 @@
 using AssetsTools.NET;
+using LibCpp2IL;
+using LibCpp2IL.Metadata;
 using PhigrosLibraryCSharp.GameRecords;
 using PhiInfo.Core.Models;
 using PhiInfo.Core.Models.Information;
@@ -78,6 +80,25 @@ public class InfoExtractor : IDisposable
 		this.Dispose();
 	}
 
+	private static Il2CppFieldDefinition GetFieldInConstantsClass(string fieldName)
+	{
+
+		Il2CppMetadata meta = LibCpp2IlMain.TheMetadata
+					   ?? throw new InvalidOperationException("Cpp2Il is not initialized.");
+
+		Il2CppAssemblyDefinition assembly = meta.AssemblyDefinitions
+							   .FirstOrDefault(a => a.AssemblyName.Name == "Assembly-CSharp")
+						   ?? throw new InvalidDataException("Cannot find Assembly-CSharp.");
+
+		Il2CppTypeDefinition type = assembly.Image.Types?
+						   .FirstOrDefault(t => t.FullName == "Constants")
+					   ?? throw new InvalidDataException("Cannot find Constants class.");
+
+		return type.Fields?
+			.FirstOrDefault(f => f.Name == fieldName)
+			?? throw new ArgumentException($"Cannot find field {fieldName}.", nameof(fieldName));
+	}
+
 	/// <summary>
 	/// Constructs an <see cref="InfoExtractor"/> from apk and obb streams. Please see warning at 
 	/// <see cref="InfoExtractor(Stream, Stream, Stream?, byte[], byte[], Stream)" />.
@@ -116,6 +137,65 @@ public class InfoExtractor : IDisposable
 		this._level0.Close();
 		this._level22?.Close();
 		this._monoBehaviourFinder.Dispose();
+	}
+
+	/// <summary>
+	/// Get the Phigros version in integer form. This is intentionally made static as it requires
+	/// Cpp2Il to be initialized (which is done when newing a instance of this class).
+	/// </summary>
+	/// <returns>Phigros version in integer form.</returns>
+	/// <exception cref="InvalidOperationException">Thrown if Cpp2Il is not initialized. It is initialized when
+	/// anything new a instance of <see cref="MonoBehaviourFinder"/>.</exception>
+	/// <exception cref="InvalidDataException">Thrown if failed to find Phigros version data.</exception>
+	public int GetVersionInteger()
+	{
+		Il2CppFieldDefinition field = GetFieldInConstantsClass("IntVersion");
+
+		object? defaultValue = field.DefaultValue?.Value;
+
+		if (field.DefaultValue?.Value is int intValue)
+			return intValue;
+
+		throw new InvalidDataException($"Invalid version type: {defaultValue?.GetType()}");
+	}
+	/// <summary>
+	/// Get the Phigros version in string form. This is intentionally made static as it requires
+	/// Cpp2Il to be initialized (which is done when newing a instance of this class).
+	/// </summary>
+	/// <returns>Phigros version in string form.</returns>
+	/// <exception cref="InvalidOperationException">Thrown if Cpp2Il is not initialized. It is initialized when
+	/// anything new a instance of <see cref="MonoBehaviourFinder"/>.</exception>
+	/// <exception cref="InvalidDataException">Thrown if failed to find Phigros version data.</exception>
+	public string GetVersionString()
+	{
+		Il2CppFieldDefinition field = GetFieldInConstantsClass("Version");
+
+		object? defaultValue = field.DefaultValue?.Value;
+
+		if (field.DefaultValue?.Value is string str)
+			return str;
+
+		throw new InvalidDataException($"Invalid version type: {defaultValue?.GetType()}");
+	}
+	/// <summary>
+	/// Get the Phigros <c>RegionType</c>, if it's <c>RegionType.IO</c> (international), this will return true. 
+	/// This is intentionally made static as it requires Cpp2Il to be initialized (which is done when 
+	/// newing a instance of this class).
+	/// </summary>
+	/// <returns>This package of Phigros is international or not.</returns>
+	/// <exception cref="InvalidOperationException">Thrown if Cpp2Il is not initialized. It is initialized when
+	/// anything new a instance of <see cref="MonoBehaviourFinder"/>.</exception>
+	/// <exception cref="InvalidDataException">Thrown if failed to find Phigros version data.</exception>
+	public bool GetIsInternational()
+	{
+		Il2CppFieldDefinition field = GetFieldInConstantsClass("RegionType");
+
+		object? defaultValue = field.DefaultValue?.Value;
+
+		if (field.DefaultValue?.Value is int flag)
+			return flag == 1;
+
+		throw new InvalidDataException($"Invalid RegionType type: {defaultValue?.GetType()}");
 	}
 
 	public List<SongInfo> ExtractSongInfo()

@@ -24,6 +24,8 @@ public sealed class ExtractTest
 		List<string> tips = rawExtractor.ExtractTips();
 		List<Avatar> avatars = rawExtractor.ExtractAvatars();
 
+		Console.WriteLine($"Phigros version: {rawExtractor.GetVersionInteger()}, {rawExtractor.GetVersionString()}");
+		Console.WriteLine($"Is international: {rawExtractor.GetIsInternational()}");
 		Console.WriteLine(songs[Random.Shared.Next(songs.Count)]);
 		Console.WriteLine(collections[Random.Shared.Next(collections.Count)]);
 		Console.WriteLine(chapters[Random.Shared.Next(chapters.Count)]);
