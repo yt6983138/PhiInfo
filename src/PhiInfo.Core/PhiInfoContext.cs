@@ -6,8 +6,8 @@ namespace PhiInfo.Core;
 public class PhiInfoContext : IDisposable
 {
     private readonly IDataProvider _dataProvider;
-    private bool _disposed;
     private readonly bool _initialized;
+    private bool _disposed;
 
     public PhiInfoContext(IDataProvider dataProvider, Language language = Language.Chinese)
     {

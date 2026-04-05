@@ -18,4 +18,4 @@ public record AllInfo(
     List<string> tips,
     List<ChapterInfo> chapters);
 
-public record Response(ushort code, string mime, byte[]? data);
+public record Response(ushort code, string? mime, byte[]? data);

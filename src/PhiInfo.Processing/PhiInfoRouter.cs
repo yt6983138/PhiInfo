@@ -43,106 +43,99 @@ public class PhiInfoRouter(PhiInfoContext context, AppInfo appInfo)
 
     public Response Handle(string path, Dictionary<string, string> query)
     {
-        try
+        switch (path)
         {
-            switch (path)
-            {
-                case "/asset/text":
-                    if (!query.TryGetValue("path", out var textPath) || string.IsNullOrEmpty(textPath))
-                        return MissPath;
+            case "/asset/text":
+                if (!query.TryGetValue("path", out var textPath) || string.IsNullOrEmpty(textPath))
+                    return MissPath;
 
-                    var textData = context.Asset.GetTextRaw(textPath);
-                    return new Response(200, "text/plain", Encoding.UTF8.GetBytes(textData.content));
+                var textData = context.Asset.GetTextRaw(textPath);
+                return new Response(200, "text/plain", Encoding.UTF8.GetBytes(textData.content));
 
-                case "/asset/music":
-                    if (!query.TryGetValue("path", out var musicPath) || string.IsNullOrEmpty(musicPath))
-                        return MissPath;
+            case "/asset/music":
+                if (!query.TryGetValue("path", out var musicPath) || string.IsNullOrEmpty(musicPath))
+                    return MissPath;
 
-                    var rawMusic = context.Asset.GetMusicRaw(musicPath);
-                    var musicData = PhiInfoDecoders.DecoderMusic(rawMusic);
-                    return new Response(200, "audio/ogg", musicData);
+                var rawMusic = context.Asset.GetMusicRaw(musicPath);
+                var musicData = PhiInfoDecoders.DecoderMusic(rawMusic);
+                return new Response(200, "audio/ogg", musicData);
 
-                case "/asset/image":
-                    if (!query.TryGetValue("path", out var imagePath) || string.IsNullOrEmpty(imagePath))
-                        return MissPath;
+            case "/asset/image":
+                if (!query.TryGetValue("path", out var imagePath) || string.IsNullOrEmpty(imagePath))
+                    return MissPath;
 
-                    var bmpData = PhiInfoDecoders.DecoderImageToBmp(
-                        context.Asset.GetImageRaw(imagePath)
-                    );
-                    return new Response(200, "image/bmp", bmpData);
+                var bmpData = PhiInfoDecoders.DecoderImageToBmp(
+                    context.Asset.GetImageRaw(imagePath)
+                );
+                return new Response(200, "image/bmp", bmpData);
 
-                case "/asset/list":
-                    var assetList = SerializeJson(context.Asset.List(), _jsonContext.ListString);
-                    return new Response(200, "application/json", assetList);
+            case "/asset/list":
+                var assetList = SerializeJson(context.Asset.List(), _jsonContext.ListString);
+                return new Response(200, "application/json", assetList);
 
-                case "/info/songs":
-                    var songs = SerializeJson(context.Info.ExtractSongInfo(), _jsonContext.ListSongInfo);
-                    return new Response(200, "application/json", songs);
+            case "/info/songs":
+                var songs = SerializeJson(context.Info.ExtractSongInfo(), _jsonContext.ListSongInfo);
+                return new Response(200, "application/json", songs);
 
-                case "/info/collection":
-                    var collection = SerializeJson(context.Info.ExtractCollection(), _jsonContext.ListFolder);
-                    return new Response(200, "application/json", collection);
+            case "/info/collection":
+                var collection = SerializeJson(context.Info.ExtractCollection(), _jsonContext.ListFolder);
+                return new Response(200, "application/json", collection);
 
-                case "/info/avatars":
-                    var avatars = SerializeJson(context.Info.ExtractAvatars(), _jsonContext.ListAvatar);
-                    return new Response(200, "application/json", avatars);
+            case "/info/avatars":
+                var avatars = SerializeJson(context.Info.ExtractAvatars(), _jsonContext.ListAvatar);
+                return new Response(200, "application/json", avatars);
 
-                case "/info/tips":
-                    var tips = SerializeJson(context.Info.ExtractTips(), _jsonContext.ListString);
-                    return new Response(200, "application/json", tips);
+            case "/info/tips":
+                var tips = SerializeJson(context.Info.ExtractTips(), _jsonContext.ListString);
+                return new Response(200, "application/json", tips);
 
-                case "/info/chapters":
-                    var chapters = SerializeJson(context.Info.ExtractChapters(), _jsonContext.ListChapterInfo);
-                    return new Response(200, "application/json", chapters);
+            case "/info/chapters":
+                var chapters = SerializeJson(context.Info.ExtractChapters(), _jsonContext.ListChapterInfo);
+                return new Response(200, "application/json", chapters);
 
-                case "/info/all":
-                    var allInfo = new AllInfo(
-                        context.Info.GetPhiVersion(),
-                        context.Info.ExtractSongInfo(),
-                        context.Info.ExtractCollection(),
-                        context.Info.ExtractAvatars(),
-                        context.Info.ExtractTips(),
-                        context.Info.ExtractChapters()
-                    );
+            case "/info/all":
+                var allInfo = new AllInfo(
+                    context.Info.GetPhiVersion(),
+                    context.Info.ExtractSongInfo(),
+                    context.Info.ExtractCollection(),
+                    context.Info.ExtractAvatars(),
+                    context.Info.ExtractTips(),
+                    context.Info.ExtractChapters()
+                );
 
-                    var allData = SerializeJson(allInfo, _jsonContext.AllInfo);
-                    return new Response(200, "application/json", allData);
+                var allData = SerializeJson(allInfo, _jsonContext.AllInfo);
+                return new Response(200, "application/json", allData);
 
-                case "/info/version":
-                    var version = context.Info.GetPhiVersion().ToString();
-                    return new Response(200, "text/plain", Encoding.UTF8.GetBytes(version));
+            case "/info/version":
+                var version = context.Info.GetPhiVersion().ToString();
+                return new Response(200, "text/plain", Encoding.UTF8.GetBytes(version));
 
-                case "/info/server":
-                    var serverInfo = GetServerInfo();
-                    var serverData = SerializeJson(serverInfo, _jsonContext.ServerInfo);
-                    return new Response(200, "application/json", serverData);
+            case "/info/server":
+                var serverInfo = GetServerInfo();
+                var serverData = SerializeJson(serverInfo, _jsonContext.ServerInfo);
+                return new Response(200, "application/json", serverData);
 
-                case "/lang/get":
-                    var currentLang = context.Language.ToString();
-                    return new Response(200, "text/plain", Encoding.UTF8.GetBytes(currentLang));
+            case "/lang/get":
+                var currentLang = context.Language.ToString();
+                return new Response(200, "text/plain", Encoding.UTF8.GetBytes(currentLang));
 
-                case "/lang/set":
-                    if (!query.TryGetValue("lang", out var langStr) || string.IsNullOrEmpty(langStr))
-                        return MissPath;
+            case "/lang/set":
+                if (!query.TryGetValue("lang", out var langStr) || string.IsNullOrEmpty(langStr))
+                    return MissPath;
 
-                    if (!Enum.TryParse<Language>(langStr, true, out var lang))
-                        return new Response(400, "text/plain", "Invalid language"u8.ToArray());
+                if (!Enum.TryParse<Language>(langStr, true, out var lang))
+                    return new Response(400, "text/plain", "Invalid language"u8.ToArray());
 
-                    context.Language = lang;
-                    return new Response(200, "text/plain", "Language set"u8.ToArray());
+                context.Language = lang;
+                return new Response(200, "text/plain", "Language set"u8.ToArray());
 
-                case "/lang/list":
-                    var languages = Enum.GetValues<Language>().Select(l => l.ToString()).ToList();
-                    var langData = SerializeJson(languages, _jsonContext.ListString);
-                    return new Response(200, "application/json", langData);
+            case "/lang/list":
+                var languages = Enum.GetValues<Language>().Select(l => l.ToString()).ToList();
+                var langData = SerializeJson(languages, _jsonContext.ListString);
+                return new Response(200, "application/json", langData);
 
-                default:
-                    return new Response(404, "text/plain", "Not Found"u8.ToArray());
-            }
-        }
-        catch (Exception)
-        {
-            return new Response(500, "text/plain", "Internal Server Error"u8.ToArray());
+            default:
+                return new Response(404, "text/plain", "Not Found"u8.ToArray());
         }
     }
 

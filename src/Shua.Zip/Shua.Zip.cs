@@ -152,18 +152,6 @@ public sealed class ShuaZip : IDisposable
         return buffer;
     }
 
-    public Stream OpenFileStreamByName(string fileName)
-    {
-        if (string.IsNullOrEmpty(fileName))
-            throw new ArgumentNullException(nameof(fileName));
-
-        var entry = FileEntries.Find(f => string.Equals(f.Name, fileName, StringComparison.OrdinalIgnoreCase)) ??
-                    throw new FileNotFoundException($"File '{fileName}' not found in the archive.");
-
-        return OpenFileStream(entry);
-    }
-
-
     public byte[] ReadFileByName(string fileName)
     {
         if (string.IsNullOrEmpty(fileName))
@@ -173,5 +161,20 @@ public sealed class ShuaZip : IDisposable
                     throw new FileNotFoundException($"File '{fileName}' not found in the archive.");
 
         return ReadFile(entry);
+    }
+
+    public Stream OpenFileStreamByName(string fileName)
+    {
+        var entry = TryFindEntry(fileName) ??
+                    throw new FileNotFoundException($"File '{fileName}' not found in the archive.");
+
+        return OpenFileStream(entry);
+    }
+
+    public FileEntry? TryFindEntry(string fileName)
+    {
+        if (string.IsNullOrEmpty(fileName))
+            throw new ArgumentNullException(nameof(fileName));
+        return FileEntries.Find(f => string.Equals(f.Name, fileName, StringComparison.OrdinalIgnoreCase));
     }
 }

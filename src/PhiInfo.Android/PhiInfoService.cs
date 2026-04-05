@@ -6,6 +6,7 @@ using Android.OS;
 using Android.Util;
 using PhiInfo.Processing;
 using PhiInfo.Processing.Type;
+using Shua.Zip;
 
 namespace PhiInfo.Android;
 
@@ -60,7 +61,8 @@ public class HttpServerService : Service
             var apkPath = appInfo?.SourceDir ?? throw new Exception("apk路径为null");
             var cldbStream = Assets?.Open("classdata.tpk") ?? throw new Exception("cldb资源找不到");
 
-            _server = PhiInfoHttpServer.FromApkPathAndCldb(apkPath, cldbStream, GetAppInfo());
+            _server = PhiInfoHttpServer.FromAndroidPackagesPathAndCldb([new ShuaZip(new MmapReadAt(apkPath))],
+                cldbStream, GetAppInfo());
 
             Log.Info(Tag, "HTTP Server started successfully.");
         }

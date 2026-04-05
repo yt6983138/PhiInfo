@@ -18,9 +18,9 @@ public class PhiInfoHttpServer : IDisposable
     private readonly PhiInfoContext _context;
     private readonly CancellationTokenSource _cts = new();
     private readonly HttpListener _listener = new();
+    private readonly Task? _listenerTask;
     private readonly PhiInfoRouter _router;
     private bool _disposed;
-    private readonly Task? _listenerTask;
 
     public PhiInfoHttpServer(IDataProvider dataProvider, AppInfo appInfo, uint port = 41669, string host = "127.0.0.1",
         Language language = Language.Chinese)
@@ -63,10 +63,11 @@ public class PhiInfoHttpServer : IDisposable
 
     public event EventHandler<Exception>? OnRequestError;
 
-    public static PhiInfoHttpServer FromApkPathAndCldb(string apkPath, Stream cldbStream, AppInfo appInfo,
+    public static PhiInfoHttpServer FromAndroidPackagesPathAndCldb(IEnumerable<ShuaZip> packages, Stream cldbStream,
+        AppInfo appInfo,
         uint port = 41669, string host = "127.0.0.1", Language language = Language.Chinese)
     {
-        return new PhiInfoHttpServer(new ApkDataProvider(new ShuaZip(new MmapReadAt(apkPath)), cldbStream), appInfo,
+        return new PhiInfoHttpServer(new AndroidPackagesDataProvider(packages, cldbStream), appInfo,
             port, host, language);
     }
 
@@ -79,12 +80,7 @@ public class PhiInfoHttpServer : IDisposable
                 await _concurrencySemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
 
                 _ = ProcessRequestAsync(context, cancellationToken)
-                    .ContinueWith(t =>
-                    {
-                        if (t.Exception?.InnerException != null)
-                            OnRequestError?.Invoke(this, t.Exception.InnerException);
-                        _concurrencySemaphore.Release();
-                    }, TaskContinuationOptions.ExecuteSynchronously).ConfigureAwait(false);
+                    .ContinueWith(_ => _concurrencySemaphore.Release(), TaskContinuationOptions.ExecuteSynchronously);
             }
             catch (Exception ex) when (ex is OperationCanceledException or HttpListenerException
                                            or ObjectDisposedException)
@@ -100,26 +96,44 @@ public class PhiInfoHttpServer : IDisposable
     private async Task ProcessRequestAsync(HttpListenerContext httpContext, CancellationToken cancellationToken)
     {
         using var responseObj = httpContext.Response;
-        AddCorsHeaders(responseObj);
 
-        if (httpContext.Request.HttpMethod.Equals("OPTIONS", StringComparison.OrdinalIgnoreCase))
+        try
         {
-            responseObj.StatusCode = 200;
-            return;
+            AddCorsHeaders(responseObj);
+
+            if (httpContext.Request.HttpMethod.Equals("OPTIONS", StringComparison.OrdinalIgnoreCase))
+            {
+                responseObj.StatusCode = 200;
+                return;
+            }
+
+            var requestUrl = httpContext.Request.Url;
+            var query = ParseQueryString(requestUrl?.Query ?? string.Empty);
+
+            var result = _router.Handle(requestUrl?.AbsolutePath ?? "/", query);
+
+            responseObj.StatusCode = result.code;
+            responseObj.ContentType = result.mime;
+
+            if (result.data?.Length > 0)
+            {
+                responseObj.ContentLength64 = result.data.LongLength;
+                await responseObj.OutputStream.WriteAsync(result.data, cancellationToken)
+                    .ConfigureAwait(false);
+            }
         }
-
-        var requestUrl = httpContext.Request.Url;
-        var query = ParseQueryString(requestUrl?.Query ?? string.Empty);
-
-        var result = _router.Handle(requestUrl?.AbsolutePath ?? "/", query);
-
-        responseObj.StatusCode = result.code;
-        responseObj.ContentType = result.mime;
-
-        if (result.data?.Length > 0)
+        catch (HttpListenerException ex) when (ex.ErrorCode == 64)
         {
-            responseObj.ContentLength64 = result.data.LongLength;
-            await responseObj.OutputStream.WriteAsync(result.data, 0, result.data.Length, cancellationToken)
+            // 忽略客户端断开
+        }
+        catch (Exception ex)
+        {
+            OnRequestError?.Invoke(this, ex);
+            responseObj.StatusCode = 500;
+            responseObj.ContentType = "text/plain";
+            var errorBytes = "Internal Server Error"u8.ToArray();
+            responseObj.ContentLength64 = errorBytes.Length;
+            await responseObj.OutputStream.WriteAsync(errorBytes, cancellationToken)
                 .ConfigureAwait(false);
         }
     }
