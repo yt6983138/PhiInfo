@@ -8,10 +8,9 @@
         <LangVersion>preview</LangVersion>
         <OutputType>Library</OutputType>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
-		<Version>0.1.0</Version>
+		<Version>1.0.0</Version>
 		
-		<!-- stop the compiler from complaining about missing documentations, apis still subject to change-->
-		<NoWarn>$(NoWarn);1591</NoWarn>
+		<!--<NoWarn>$(NoWarn);1591</NoWarn>-->
     </PropertyGroup>
 
     <ItemGroup>
