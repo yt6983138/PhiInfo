@@ -43,6 +43,4 @@
 			<PackagePath>.</PackagePath>
 		</Content>
 	</ItemGroup>
-
-	<Import Project="PhiInfo.CLI.targets" />
 </Project>
