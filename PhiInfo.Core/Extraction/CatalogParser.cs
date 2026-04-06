@@ -10,9 +10,9 @@ namespace PhiInfo.Core.Extraction;
 public class CatalogParser
 {
 	private readonly List<CatalogEntry> _entries;
-	private readonly FrozenDictionary<string, CatalogValue> _cachedEntries;
 
 	public IReadOnlyList<CatalogEntry> Entries => this._entries;
+	public FrozenDictionary<string, CatalogValue> CachedEntries { get; }
 
 	/// <summary>
 	/// Parses catalog from parsed catalog.json data. Please use static methods to create
@@ -27,7 +27,7 @@ public class CatalogParser
 		byte[] entryData)
 	{
 		this._entries = ParseEntries(keyData, bucketData, entryData);
-		this._cachedEntries = this._entries
+		this.CachedEntries = this._entries
 			.Where(x => x.Key.StringValue is not null)
 			.ToFrozenDictionary(x => x.Key.StringValue!, x => x.Value);
 	}
@@ -81,7 +81,7 @@ public class CatalogParser
 	/// <see langword="null"/> if key is not found.</returns>
 	public CatalogValue? TryGet(string key)
 	{
-		if (this._cachedEntries.TryGetValue(key, out CatalogValue value))
+		if (this.CachedEntries.TryGetValue(key, out CatalogValue value))
 			return value;
 
 		return null;

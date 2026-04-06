@@ -112,9 +112,8 @@ public class AddressableBundleExtractor
 	/// <returns>All asset paths from catalog.</returns>
 	public List<string> ListAllAssetPathsInCatalog()
 	{
-		return this._catalogParser.Entries
-			.Where(e => e.Value.ResolvedKey != null && e.Key.StringValue is not null)
-			.Select(v => v.Key.StringValue!)
+		return this._catalogParser.CachedEntries
+			.Select(entry => entry.Key)
 			.ToList();
 	}
 	/// <summary>
@@ -124,8 +123,9 @@ public class AddressableBundleExtractor
 	/// <returns>A list with only meaningful asset paths.</returns>
 	public List<string> ListMeaningfulAssetPathsInCatalog()
 	{
-		return this.ListAllAssetPathsInCatalog()
-			.Where(x => !UInt128.TryParse(x, NumberStyles.HexNumber, null, out UInt128 _))
+		return this._catalogParser.CachedEntries
+			.Select(entry => entry.Key)
+			.Where(x => x.Length < 32 || !UInt128.TryParse(x.AsSpan()[..32], NumberStyles.HexNumber, null, out UInt128 _))
 			.ToList();
 	}
 	/// <summary>
