@@ -10,7 +10,7 @@
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		<AssemblyVersion>1.0.0</AssemblyVersion>
 
-		<PackageId>$(AssemblyName)</PackageId>
+		<PackageId>yt6983138.$(AssemblyName)</PackageId>
 		<Version>$(AssemblyVersion)</Version>
 		<Authors>yt6983138,Shua-github</Authors>
 		<Description>
