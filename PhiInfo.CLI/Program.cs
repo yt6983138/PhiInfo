@@ -12,6 +12,7 @@ using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace PhiInfo.CLI;
 
@@ -24,6 +25,17 @@ public class Program
 		List<string> Tips);
 
 	private const Language AllLanguage = unchecked((Language)0xFFFFFFFF);
+
+	private static readonly JsonSerializerOptions _jsonOptions = new()
+	{
+		PropertyNamingPolicy = null,
+		PropertyNameCaseInsensitive = true,
+		NumberHandling = JsonNumberHandling.AllowReadingFromString,
+		Converters =
+		{
+			new JsonStringEnumConverter()
+		}
+	};
 
 	private static readonly Option<string> DownloadApkOption = new("--download-apk")
 	{
@@ -148,8 +160,8 @@ public class Program
 	];
 
 	private static volatile bool _isDoingWork = false;
-	private static ConcurrentQueue<string> _logQueue = new();
-	private static ConcurrentQueue<Task<string?>> _processQueue = new();
+	private static readonly ConcurrentQueue<string> _logQueue = new();
+	private static readonly ConcurrentQueue<Task<string?>> _processQueue = new();
 
 	public static int Main(string[] args)
 	{
@@ -274,7 +286,7 @@ public class Program
 			extractInfoTo.Create();
 			await File.WriteAllTextAsync(
 				Path.Combine(extractInfoTo.FullName, "info.json"),
-				JsonSerializer.Serialize(new NonMultiLanguageInfos(songs, avatars, chapters)),
+				JsonSerializer.Serialize(new NonMultiLanguageInfos(songs, avatars, chapters), _jsonOptions),
 				Encoding.UTF8);
 
 			if (language == AllLanguage)
@@ -326,7 +338,7 @@ public class Program
 				Console.WriteLine($"Writing language specific information for {lang}...");
 				await File.WriteAllTextAsync(
 					Path.Combine(extractInfoTo.FullName, $"tipsAndCollections_{lang}.json"),
-					JsonSerializer.Serialize(new MultiLanguageInfos(collections, tips)),
+					JsonSerializer.Serialize(new MultiLanguageInfos(collections, tips), _jsonOptions),
 					Encoding.UTF8);
 			}
 		}
@@ -376,7 +388,7 @@ public class Program
 				Console.WriteLine("Writing AvatarInfo...");
 				await File.WriteAllTextAsync(
 					Path.Combine(extractAssetTo.FullName, AvatarBasePath, "AvatarInfo.json"),
-					JsonSerializer.Serialize(avatarMap),
+					JsonSerializer.Serialize(avatarMap, _jsonOptions),
 					Encoding.UTF8);
 			}
 
