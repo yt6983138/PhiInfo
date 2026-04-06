@@ -93,7 +93,7 @@ public class AddressableBundleExtractor
 	}
 	private async Task<Stream> GetBundleStreamByCatalogPathAsync(string path, CancellationToken ct = default)
 	{
-		CatalogValue? bundlePath = this._catalogParser.Get(path);
+		CatalogValue? bundlePath = this._catalogParser.TryGet(path);
 
 		if (bundlePath is null)
 			throw new ArgumentException($"Asset not found in catalog.", nameof(path));

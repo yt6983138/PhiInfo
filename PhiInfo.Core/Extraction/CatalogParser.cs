@@ -1,8 +1,7 @@
 ﻿using PhigrosLibraryCSharp;
 using PhiInfo.Core.Catalog;
 using PhiInfo.Core.Models.Catalog;
-using System.Collections.Immutable;
-using System.Diagnostics.CodeAnalysis;
+using System.Collections.Frozen;
 using System.Text;
 using System.Text.Json;
 
@@ -10,7 +9,9 @@ namespace PhiInfo.Core.Extraction;
 
 public class CatalogParser
 {
-	private readonly ImmutableList<CatalogEntry> _entries;
+	private readonly List<CatalogEntry> _entries;
+	private readonly FrozenDictionary<string, CatalogValue> _cachedEntries;
+
 	public IReadOnlyList<CatalogEntry> Entries => this._entries;
 
 	/// <summary>
@@ -25,13 +26,10 @@ public class CatalogParser
 		byte[] bucketData,
 		byte[] entryData)
 	{
-		this._entries = ParseEntries(keyData, bucketData, entryData).ToImmutableList();
-	}
-
-	private static void EnsureCatalogModelNotNull([NotNull] RawCatalogModel? obj, string paramName)
-	{
-		if (obj is null)
-			throw new ArgumentNullException("Invalid json supplied.", paramName);
+		this._entries = ParseEntries(keyData, bucketData, entryData);
+		this._cachedEntries = this._entries
+			.Where(x => x.Key.StringValue is not null)
+			.ToFrozenDictionary(x => x.Key.StringValue!, x => x.Value);
 	}
 
 	public static CatalogParser FromBase64Strings(string keyDataString, string bucketDataString, string entryDataString)
@@ -42,8 +40,8 @@ public class CatalogParser
 	}
 	public static async Task<CatalogParser> FromJsonAsync(Stream json, CancellationToken ct = default)
 	{
-		RawCatalogModel? data = await JsonSerializer.DeserializeAsync(json, CatalogModelJsonContext.Default.RawCatalogModel, ct);
-		EnsureCatalogModelNotNull(data, nameof(json));
+		RawCatalogModel? data = await JsonSerializer.DeserializeAsync(json, CatalogModelJsonContext.Default.RawCatalogModel, ct)
+			?? throw new ArgumentException("Invalid json supplied.", nameof(json));
 
 		return FromBase64Strings(data.KeyDataString, data.BucketDataString, data.EntryDataString);
 	}
@@ -53,7 +51,17 @@ public class CatalogParser
 		return await FromJsonAsync(catalogStream, ct);
 	}
 
-	public CatalogValue? Get(CatalogKey key)
+	/// <summary>
+	/// Try to get a catalog value by key. This is an O(n) operation, 
+	/// so it's not recommended to call this method frequently. Use 
+	/// <see cref="TryGet(string)"/> if you want to get a value by 
+	/// string key, which is using a <see cref="FrozenDictionary"/> 
+	/// under the hood.
+	/// </summary>
+	/// <param name="key">A <see cref="CatalogKey"/> representing the key.</param>
+	/// <returns>A <see cref="CatalogValue"/> representing the value, or
+	/// <see langword="null"/> if key is not found.</returns>
+	public CatalogValue? TryGet(CatalogKey key)
 	{
 		foreach (CatalogEntry entry in this._entries)
 		{
@@ -63,18 +71,18 @@ public class CatalogParser
 
 		return null;
 	}
-
-	public CatalogValue? Get(string key)
+	/// <summary>
+	/// Try to get a catalog value by string key. If you want to use other
+	/// types of keys, use <see cref="TryGet(CatalogKey)"/>. This method is 
+	/// using a <see cref="FrozenDictionary"/> under the hood, so it is much faster.
+	/// </summary>
+	/// <param name="key">A <see cref="string"/> representing the key.</param>
+	/// <returns>A <see cref="CatalogValue"/> representing the value, or
+	/// <see langword="null"/> if key is not found.</returns>
+	public CatalogValue? TryGet(string key)
 	{
-		foreach (CatalogEntry entry in this._entries)
-		{
-			if ((entry.Key.Type == CatalogKeyType.Utf8String ||
-				 entry.Key.Type == CatalogKeyType.UnicodeString) &&
-				entry.Key.StringValue == key)
-			{
-				return entry.Value;
-			}
-		}
+		if (this._cachedEntries.TryGetValue(key, out CatalogValue value))
+			return value;
 
 		return null;
 	}
@@ -99,11 +107,14 @@ public class CatalogParser
 		byte[] bucketData,
 		byte[] entryData)
 	{
-		List<CatalogEntry> table = [];
 
 		ByteReader keyReader = new(keyData);
 		ByteReader bucketReader = new(bucketData);
+		ByteReader entryReader = new(entryData);
+
 		int bucketCount = bucketReader.ReadInt();
+		List<CatalogEntry> table = new(bucketCount); // preallocate list, ResolveReferences will add
+													 // so we can't just use Memory<T> or something like that
 		for (int i = 0; i < bucketCount; i++)
 		{
 			int keyPos = bucketReader.ReadInt();
@@ -124,11 +135,14 @@ public class CatalogParser
 
 			int entryCount = bucketReader.ReadInt();
 			int entryPos = bucketReader.ReadInt();
-			for (int j = 1; j < entryCount; j++)
-				bucketReader.ReadInt();
+			bucketReader.Jump((entryCount - 1) * sizeof(int));
 
+			//ushort raw = (ushort)(entryData[entryStart + 8] ^ (entryData[entryStart + 9] << 8));
+			// raw was originally using xor, but it doesn't make sense since they bitshifted the second byte to the left by 8,
+			// which is the same as just or. so i changed it to this.
 			int entryStart = 4 + (28 * entryPos);
-			ushort raw = (ushort)(entryData[entryStart + 8] ^ (entryData[entryStart + 9] << 8));
+			entryReader.JumpTo(entryStart + 8);
+			ushort raw = entryReader.ReadUnsignedShort();
 			CatalogValue value = CatalogValue.FromRaw(raw);
 
 			table.Add(new CatalogEntry(key, value));
@@ -147,7 +161,7 @@ public class CatalogParser
 				continue;
 
 			ushort index = value.RawValue;
-			if (index == 65535 || index >= table.Count)
+			if (index == ushort.MaxValue || index >= table.Count)
 				continue;
 
 			table[i].Value = CatalogValue.FromResolved(table[index].Key);
