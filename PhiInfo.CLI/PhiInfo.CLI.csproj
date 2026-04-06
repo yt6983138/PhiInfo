@@ -6,11 +6,23 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<LangVersion>preview</LangVersion>
 		<OutputType>Exe</OutputType>
+		<AssemblyVersion>1.0.0</AssemblyVersion>
+		<PackAsTool>true</PackAsTool>
+		<ToolCommandName>phi-info-extract</ToolCommandName>
 
-		<UseAppHost>false</UseAppHost>
-		<InvariantGlobalization>true</InvariantGlobalization>
+		<PackageId>$(AssemblyName)</PackageId>
+		<Version>$(AssemblyVersion)</Version>
+		<Authors>yt6983138,Shua-github</Authors>
+		<Description>
+			CLI tool for PhiInfo, a Phigros asset extraction library, with a focus on ease of use and high performance.
+		</Description>
+		<Copyright>Copyright © 2026 yt6983138 aka static_void; Shua-github aka Shua</Copyright>
+		<PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
+		<RepositoryUrl>https://github.com/yt6983138/PhiInfo/</RepositoryUrl>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageTags>unity;extraction;c#;.net;.netcore;phigros;cli;tool</PackageTags>
 
-		<Version>1.0.0</Version>
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 	</PropertyGroup>
 	
 	<ItemGroup>
@@ -19,6 +31,17 @@
 	
 	<ItemGroup>
 	  <ProjectReference Include="..\PhiInfo.Core\PhiInfo.Core.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Content Include="../README.md;../LICENSE.txt" copyToOutput="true">
+			<IncludeInPackage>true</IncludeInPackage>
+			<CopyToOutput>true</CopyToOutput>
+			<BuildAction>Content</BuildAction>
+			<copyToOutput>true</copyToOutput>
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+			<PackagePath>.</PackagePath>
+		</Content>
 	</ItemGroup>
 
 	<Import Project="PhiInfo.CLI.targets" />

@@ -8,9 +8,21 @@
         <LangVersion>preview</LangVersion>
         <OutputType>Library</OutputType>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
-		<Version>1.0.0</Version>
-		
-		<!--<NoWarn>$(NoWarn);1591</NoWarn>-->
+		<AssemblyVersion>1.0.0</AssemblyVersion>
+
+		<PackageId>$(AssemblyName)</PackageId>
+		<Version>$(AssemblyVersion)</Version>
+		<Authors>yt6983138,Shua-github</Authors>
+		<Description>
+			A Phigros asset extraction library, with a focus on ease of use and high performance.
+		</Description>
+		<Copyright>Copyright © 2026 yt6983138 aka static_void; Shua-github aka Shua</Copyright>
+		<PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
+		<RepositoryUrl>https://github.com/yt6983138/PhiInfo/</RepositoryUrl>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageTags>unity;extraction;c#;.net;.netcore;library;phigros</PackageTags>
+
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     </PropertyGroup>
 
     <ItemGroup>
@@ -22,4 +34,15 @@
 		<PackageReference Include="Fmod5Sharp" Version="3.1.0" />
 		<PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
     </ItemGroup>
+
+	<ItemGroup>
+		<Content Include="../README.md;../LICENSE.txt" copyToOutput="true">
+			<IncludeInPackage>true</IncludeInPackage>
+			<CopyToOutput>true</CopyToOutput>
+			<BuildAction>Content</BuildAction>
+			<copyToOutput>true</copyToOutput>
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+			<PackagePath>.</PackagePath>
+		</Content>
+	</ItemGroup>
 </Project>
