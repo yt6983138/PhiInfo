@@ -18,7 +18,21 @@ Phigros asset extraction implemented using `AssetsTools.NET`.
 - [x] Extract all collection resources (cover images)
 - [x] Extract all avatar resources (avatar images, name to hash map)
 - [x] Extract all chapter resources (cover images)
+### Core library
+Features:
+1. Async api for apis involving I/O operations
+2. Development-friendly typed models for extracted informations
 ### CLI
+Features: 
+1. Ultra-fast extraction with concurrency (All assets in 22.9 seconds on my PC)
+2. Flexible options to only extract what you need
+3. Automatic downloading of APK and classdata.tpk from TapTap or URL
+4. Support for extracting from OBB and auxiliary OBB files
+5. Support for multiple languages (Chinese, English, Japanese, Korean, Traditional Chinese)
+6. Support for Phigros_Resource compatible format<sup>[1]</sup>, so you can swap to this easily
+
+<sup>[1]</sup>: Currently only supports: `avatar.txt`, `collection.tsv`, `difficulty.tsv`, `tips.txt`, `info.tsv`, and `tmp.tsv`
+
 Different to the original project, this project extract to local only and does not 
 spin up a http server, so there is no API endpoint. Instead, the CLI has the following
 options:
