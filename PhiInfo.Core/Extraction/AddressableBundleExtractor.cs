@@ -10,8 +10,9 @@ namespace PhiInfo.Core.Extraction;
 /// Maps addressable bundle file name to the actual bundle stream.
 /// </summary>
 /// <param name="path">The addressable bundle name. I.e. 0a0ec2bd31adfd9c120bf7658ad4fa05.bundle</param>
+/// <param name="ct">Cancellation token.</param>
 /// <returns>A stream to the bundle file. Must be seekable and readable. Will be disposed after use.</returns>
-public delegate Stream BundleStreamFactory(string path);
+public delegate Task<Stream> BundleStreamFactory(string path, CancellationToken ct = default);
 public class AddressableBundleExtractor
 {
 	private record struct MappedAssetBundle(AssetBundleFile BundleFile, AssetsFile InfoAssetFile) : IDisposable
@@ -29,7 +30,7 @@ public class AddressableBundleExtractor
 	/// <summary>
 	/// Creates an instance of this class with a <see cref="CatalogParser"/> and a <see cref="BundleStreamFactory"/>. 
 	/// Recommend to use the static methods in <see cref="PhigrosAssetHelper"/> to create these parameters, 
-	/// or use the static method like <see cref="FromObb(Stream, Stream?)"/> to create an instance of this class directly.
+	/// or use the static method like <see cref="FromObbAsync(Stream, Stream?, CancellationToken)"/> to create an instance of this class directly.
 	/// Auxiliary obb is sometimes needed.
 	/// </summary>
 	/// <param name="catalogParser">A catalog parser.</param>
@@ -46,14 +47,15 @@ public class AddressableBundleExtractor
 	/// </summary>
 	/// <param name="obb">The obb file. May need <paramref name="auxObb"/> sometimes.</param>
 	/// <param name="auxObb">The auxiliary (patch) obb file.</param>
+	/// <param name="ct">Cancellation token.</param>
 	/// <returns>A new instance of <see cref="AddressableBundleExtractor"/>.</returns>
-	public static AddressableBundleExtractor FromObb(Stream obb, Stream? auxObb = null)
+	public static async Task<AddressableBundleExtractor> FromObbAsync(Stream obb, Stream? auxObb = null, CancellationToken ct = default)
 	{
-		CatalogParser catalogParser = CatalogParser.FromObb(obb);
+		CatalogParser catalogParser = await CatalogParser.FromObbAsync(obb, ct);
 		return new(catalogParser, PhigrosAssetHelper.CreateBundleFactoryFromObb(obb, auxObb));
 	}
 
-	private static byte[] ReadAbsolutePositionRange(Stream baseStream, long offset, int size)
+	private static async Task<byte[]> ReadAbsolutePositionRangeAsync(Stream baseStream, long offset, int size, CancellationToken ct = default)
 	{
 		byte[] buffer = new byte[size];
 
@@ -61,7 +63,7 @@ public class AddressableBundleExtractor
 		try
 		{
 			baseStream.Seek(offset, SeekOrigin.Begin);
-			baseStream.ReadExactly(buffer, 0, size);
+			await baseStream.ReadExactlyAsync(buffer, 0, size, ct);
 		}
 		finally
 		{
@@ -71,10 +73,10 @@ public class AddressableBundleExtractor
 		return buffer;
 	}
 
-	private MappedAssetBundle FindAddressableByCatalogPath(string path)
+	private async Task<MappedAssetBundle> FindAddressableByCatalogPathAsync(string path, CancellationToken ct = default)
 	{
 		// this stream will be disposed by the AssetBundleFile dispose method, which is called in MappedAssetBundle dispose method
-		Stream file = this.GetBundleStreamByCatalogPath(path);
+		Stream file = await this.GetBundleStreamByCatalogPathAsync(path, ct);
 
 		AssetsFileReader reader = new(file);
 		AssetBundleFile bundleFile = new();
@@ -89,7 +91,7 @@ public class AddressableBundleExtractor
 
 		return new MappedAssetBundle(bundleFile, infoAssetFile);
 	}
-	private Stream GetBundleStreamByCatalogPath(string path)
+	private async Task<Stream> GetBundleStreamByCatalogPathAsync(string path, CancellationToken ct = default)
 	{
 		CatalogValue? bundlePath = this._catalogParser.Get(path);
 
@@ -100,7 +102,7 @@ public class AddressableBundleExtractor
 		if (bundlePath.Value.ResolvedKey.Value.StringValue is null)
 			throw new ArgumentException($"Asset has invalid resolved bundle path.", nameof(path));
 
-		return this._bundleStreamFactory(bundlePath.Value.ResolvedKey.Value.StringValue);
+		return await this._bundleStreamFactory(bundlePath.Value.ResolvedKey.Value.StringValue, ct);
 	}
 
 	#region Public extraction methods
@@ -130,11 +132,12 @@ public class AddressableBundleExtractor
 	/// Get raw image data from path.
 	/// </summary>
 	/// <param name="path">The addressable path.</param>
+	/// <param name="ct">Cancellation token.</param>
 	/// <returns>Raw image data in unity internal format.</returns>
 	/// <exception cref="ArgumentException">Thrown if there is no Texture2D in the bundle.</exception>
-	public UnityImage GetImageRaw(string path)
+	public async Task<UnityImage> GetImageRawAsync(string path, CancellationToken ct = default)
 	{
-		using MappedAssetBundle bundle = this.FindAddressableByCatalogPath(path);
+		using MappedAssetBundle bundle = await this.FindAddressableByCatalogPathAsync(path, ct);
 
 		foreach (AssetFileInfo? info in bundle.InfoAssetFile.AssetInfos)
 		{
@@ -150,8 +153,11 @@ public class AddressableBundleExtractor
 				long dataSize = baseField["m_StreamData"]["size"].AsLong;
 				bundle.BundleFile.GetFileRange(1, out long dataFileOffset, out _);
 
-				byte[] data = ReadAbsolutePositionRange(bundle.BundleFile.DataReader.BaseStream, dataFileOffset + dataOffset,
-					(int)dataSize);
+				byte[] data = await ReadAbsolutePositionRangeAsync(
+					bundle.BundleFile.DataReader.BaseStream,
+					dataFileOffset + dataOffset,
+					(int)dataSize,
+					ct);
 
 				UnityImage image = new(format, width, height, data);
 				return image;
@@ -164,11 +170,12 @@ public class AddressableBundleExtractor
 	/// Get raw music data from path.
 	/// </summary>
 	/// <param name="path">The addressable path.</param>
+	/// <param name="ct">Cancellation token.</param>
 	/// <returns>Raw music data in unity internal format.</returns>
 	/// <exception cref="ArgumentException">Thrown if there is no AudioClip in the bundle.</exception>
-	public UnityMusic GetMusicRaw(string path)
+	public async Task<UnityMusic> GetMusicRawAsync(string path, CancellationToken ct = default)
 	{
-		using MappedAssetBundle bundle = this.FindAddressableByCatalogPath(path);
+		using MappedAssetBundle bundle = await this.FindAddressableByCatalogPathAsync(path, ct);
 
 		foreach (AssetFileInfo? info in bundle.InfoAssetFile.AssetInfos)
 		{
@@ -180,8 +187,8 @@ public class AddressableBundleExtractor
 				float length = baseField["m_Length"].AsFloat;
 				bundle.BundleFile.GetFileRange(1, out long dataFileOffset, out _);
 
-				byte[] data = ReadAbsolutePositionRange(bundle.BundleFile.DataReader.BaseStream, dataFileOffset + dataOffset,
-					(int)dataSize);
+				byte[] data = await ReadAbsolutePositionRangeAsync(bundle.BundleFile.DataReader.BaseStream, dataFileOffset + dataOffset,
+					(int)dataSize, ct);
 
 				return new UnityMusic(length, data);
 			}
@@ -194,11 +201,12 @@ public class AddressableBundleExtractor
 	/// Get raw text data from path.
 	/// </summary>
 	/// <param name="path">The addressable path.</param>
+	/// <param name="ct">Cancellation token.</param>
 	/// <returns>Raw text data in unity internal format.</returns>
 	/// <exception cref="ArgumentException">Thrown if there is no TextAsset in the bundle.</exception>
-	public UnityText GetTextRaw(string path)
+	public async Task<UnityText> GetTextRawAsync(string path, CancellationToken ct = default)
 	{
-		using MappedAssetBundle bundle = this.FindAddressableByCatalogPath(path);
+		using MappedAssetBundle bundle = await this.FindAddressableByCatalogPathAsync(path, ct);
 
 		foreach (AssetFileInfo? info in bundle.InfoAssetFile.AssetInfos)
 		{

@@ -13,14 +13,18 @@ public static class PhigrosAssetHelper
 	/// <summary>
 	/// Merge streams into one stream.
 	/// </summary>
+	/// <param name="ct">Cancellation token.</param>
 	/// <param name="streams">Streams to be merged. They will not be disposed by this method, but they will be read to the end.</param>
 	/// <returns>A new constructed <see cref="MemoryStream"/>, with <paramref name="streams"/> contents copied to it, and position set to 0.</returns>
-	public static MemoryStream MergeStreams(params IEnumerable<Stream> streams)
+	public static async Task<MemoryStream> MergeStreamsAsync(CancellationToken ct = default, params IEnumerable<Stream> streams)
 	{
 		MemoryStream merged = new();
 		foreach (Stream stream in streams)
 		{
-			stream.CopyTo(merged);
+			// this cannot be optimized by using concurrent copy since the merged stream needs
+			// to be written sequentially, because DeflateStream does not support length property
+			// so we cannot know where to start writing
+			await stream.CopyToAsync(merged, ct);
 		}
 		merged.Position = 0;
 		return merged;
@@ -29,9 +33,10 @@ public static class PhigrosAssetHelper
 	/// Create a complete level22 stream by merging all level22.split* files in the given zip.
 	/// </summary>
 	/// <param name="zip">The zip file. Usually the obb file.</param>
+	/// <param name="ct">Cancellation token.</param>
 	/// <returns>A merged <see cref="MemoryStream"/> with complete level22 content, and position set to 0.</returns>
 	/// <exception cref="FileNotFoundException">Thrown if level22.split files does not exist.</exception>
-	public static MemoryStream BuildCompleteLevel22FromZip(ZipArchive zip)
+	public static async Task<MemoryStream> BuildCompleteLevel22FromZipAsync(ZipArchive zip, CancellationToken ct = default)
 	{
 		const string SplitPrefix = "assets/bin/Data/level22.split";
 
@@ -52,40 +57,39 @@ public static class PhigrosAssetHelper
 		level22Parts.Sort((a, b) => a.index.CompareTo(b.index));
 
 		IEnumerable<Stream> streams = level22Parts.Select(part => zip.GetEntryOrThrow(part.name).Open());
-		MemoryStream level22 = MergeStreams(streams);
-		foreach (Stream stream in streams)
+		MemoryStream level22 = await MergeStreamsAsync(ct, streams);
+		foreach (ValueTask task in streams.Select(x => x.DisposeAsync()))
 		{
-			stream.Dispose();
+			await task;
 		}
 
 		return level22;
 	}
 
 	/// <summary>
-	/// Create a complete level22 stream from obb. <see cref="BuildCompleteLevel22FromZip(ZipArchive)"/>.
+	/// Create a complete level22 stream from obb. <see cref="BuildCompleteLevel22FromZipAsync(ZipArchive, CancellationToken)"/>.
 	/// </summary>
 	/// <param name="obb">The obb file.</param>
+	/// <param name="ct">Cancellation token.</param>
 	/// <returns>Merged stream of level22.</returns>
-	public static MemoryStream GetLevel22FromObb(Stream obb)
+	public static async Task<MemoryStream> GetLevel22FromObbAsync(Stream obb, CancellationToken ct = default)
 	{
 		ZipArchive zip = new(obb, ZipArchiveMode.Read, true);
-		return BuildCompleteLevel22FromZip(zip);
+		return await BuildCompleteLevel22FromZipAsync(zip, ct);
 	}
-	public static void GetInformationExtractionRequiredData(Stream apk,
-		out Stream globalGameManagers,
-		out Stream level0,
-		out byte[] il2CppSo,
-		out byte[] globalMetadata)
+	public static async Task<(Stream GlobalGameManagers, Stream Level0, byte[] Il2CppSo, byte[] GlobalMetadata)> GetInformationExtractionRequiredDataAsync(
+		Stream apk, CancellationToken ct = default)
 	{
 		ZipArchive zip = new(apk, ZipArchiveMode.Read, true);
-		il2CppSo = zip.GetEntryOrThrow("lib/arm64-v8a/libil2cpp.so").OpenAndReadAllBytes();
-		globalMetadata = zip.GetEntryOrThrow("assets/bin/Data/Managed/Metadata/global-metadata.dat").OpenAndReadAllBytes();
+		byte[] il2CppSo = await zip.GetEntryOrThrow("lib/arm64-v8a/libil2cpp.so").OpenAndReadAllBytesAsync(ct);
+		byte[] globalMetadata = await zip.GetEntryOrThrow("assets/bin/Data/Managed/Metadata/global-metadata.dat").OpenAndReadAllBytesAsync(ct);
 
-		byte[] globalGameManagersData = zip.GetEntryOrThrow("assets/bin/Data/globalgamemanagers.assets").OpenAndReadAllBytes();
-		byte[] level0Data = zip.GetEntryOrThrow("assets/bin/Data/level0").OpenAndReadAllBytes();
+		byte[] globalGameManagersData = await zip.GetEntryOrThrow("assets/bin/Data/globalgamemanagers.assets").OpenAndReadAllBytesAsync(ct);
+		byte[] level0Data = await zip.GetEntryOrThrow("assets/bin/Data/level0").OpenAndReadAllBytesAsync(ct);
 
-		globalGameManagers = new MemoryStream(globalGameManagersData);
-		level0 = new MemoryStream(level0Data);
+		MemoryStream globalGameManagers = new(globalGameManagersData);
+		MemoryStream level0 = new(level0Data);
+		return (globalGameManagers, level0, il2CppSo, globalMetadata);
 	}
 
 	/// <summary>
@@ -112,8 +116,10 @@ public static class PhigrosAssetHelper
 	{
 		ZipArchive zip = new(obb, ZipArchiveMode.Read, true);
 		ZipArchive? auxZip = auxObb is null ? null : new(auxObb, ZipArchiveMode.Read, true);
-		return path =>
+		SemaphoreSlim @lock = new(1, 1);
+		return async (path, ct) =>
 		{
+			await @lock.WaitAsync(ct);
 			ZipArchiveEntry entry = zip.GetEntry($"assets/aa/Android/{path}") ??
 				auxZip?.GetEntryOrThrow($"assets/aa/Android/{path}") ??
 				throw new FileNotFoundException($"Required Unity asset missing from package and no auxiliary obb provided: {path}");
@@ -121,8 +127,9 @@ public static class PhigrosAssetHelper
 			using Stream zipStream = entry.Open();
 
 			MemoryStream stream = new();
-			zipStream.CopyTo(stream);
+			await zipStream.CopyToAsync(stream, ct);
 			stream.Position = 0;
+			@lock.Release();
 
 			return stream;
 		};
@@ -139,12 +146,12 @@ public static class PhigrosAssetHelper
 		return FmodVorbisRebuilder.RebuildOggFile(bank.Samples[0]);
 	}
 
-	private static byte[] OpenAndReadAllBytes(this ZipArchiveEntry entry)
+	private static async Task<byte[]> OpenAndReadAllBytesAsync(this ZipArchiveEntry entry, CancellationToken ct = default)
 	{
 		Stream stream = entry.Open();
 		long length = entry.Length;
 		byte[] data = new byte[length];
-		stream.ReadExactly(data);
+		await stream.ReadExactlyAsync(data, ct);
 		return data;
 	}
 	private static ZipArchiveEntry GetEntryOrThrow(this ZipArchive zip, string name)

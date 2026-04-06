@@ -6,6 +6,7 @@ using PhiInfo.Core.Models;
 using PhiInfo.Core.Models.Information;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Png;
+using System.Collections.Concurrent;
 using System.CommandLine;
 using System.IO.Compression;
 using System.Security.Cryptography;
@@ -146,6 +147,10 @@ public class Program
 		LanguageOption
 	];
 
+	private static volatile bool _isDoingWork = false;
+	private static ConcurrentQueue<string> _logQueue = new();
+	private static ConcurrentQueue<Task<string?>> _processQueue = new();
+
 	public static int Main(string[] args)
 	{
 #pragma warning disable IDE0028 // Simplify collection initialization
@@ -157,11 +162,11 @@ public class Program
 			rootCommand.Options.Add(item);
 		}
 
-		rootCommand.SetAction(AfterArgumentParsed);
+		rootCommand.SetAction(AfterArgumentParsedAsync);
 		return rootCommand.Parse(args).Invoke();
 	}
 
-	private static void AfterArgumentParsed(ParseResult parseResult)
+	private static async Task AfterArgumentParsedAsync(ParseResult parseResult)
 	{
 		string? downloadApk = parseResult.GetValue(DownloadApkOption);
 		string? downloadClassData = parseResult.GetValue(DownloadClassDataOption);
@@ -185,7 +190,7 @@ public class Program
 			using HttpClient client = new();
 
 			string apkUrl = downloadApk == "TAPTAP" ?
-				TapTapDownloader.GetApkLatestUrl(client) : downloadApk;
+				await TapTapDownloader.GetApkLatestUrlAsync(client) : downloadApk;
 			string apkDestination = apkFile?.FullName ?? Path.Combine(Path.GetTempPath(), "phigros_latest.apk");
 
 			Console.WriteLine($"Downloading APK from {apkUrl} to {apkDestination}...");
@@ -195,8 +200,8 @@ public class Program
 			auxObbFile = null;
 
 			using Stream apkStream = apkFile.Open(FileMode.Create, FileAccess.Write);
-			using Stream downloaded = client.GetStreamAsync(apkUrl).GetAwaiter().GetResult();
-			downloaded.CopyTo(apkStream);
+			using Stream downloaded = await client.GetStreamAsync(apkUrl);
+			await downloaded.CopyToAsync(apkStream);
 
 			Console.WriteLine("APK downloaded.");
 		}
@@ -211,18 +216,17 @@ public class Program
 			if (downloadClassData == "AUTO")
 			{
 				using ZipArchive archive = new(
-					client.GetStreamAsync("https://nightly.link/AssetRipper/Tpk/workflows/type_tree_tpk/master/uncompressed_file.zip")
-						.GetAwaiter().GetResult());
+					await client.GetStreamAsync("https://nightly.link/AssetRipper/Tpk/workflows/type_tree_tpk/master/uncompressed_file.zip"));
 
 				using Stream classDataEntryStream = archive.GetEntry("uncompressed.tpk").EnsureNotNull().Open();
 
-				classDataEntryStream.CopyTo(classDataStream);
+				await classDataEntryStream.CopyToAsync(classDataStream);
 			}
 			else
 			{
 				Console.WriteLine($"Downloading classdata.tpk from {downloadClassData} to {classDataFile.FullName}...");
-				using Stream downloaded = client.GetStreamAsync(downloadClassData).GetAwaiter().GetResult();
-				downloaded.CopyTo(classDataStream);
+				using Stream downloaded = await client.GetStreamAsync(downloadClassData);
+				await downloaded.CopyToAsync(classDataStream);
 			}
 			Console.WriteLine("classdata.tpk downloaded.");
 		}
@@ -234,7 +238,7 @@ public class Program
 		InfoExtractor? infoExtractor = null;
 		if (apkFile is not null && classDataFile is not null)
 		{
-			infoExtractor = InfoExtractor.FromApkAndObb(
+			infoExtractor = await InfoExtractor.FromApkAndObbAsync(
 				apkFile.OpenRead(),
 				obbFile?.OpenRead(),
 				classDataFile.OpenRead());
@@ -264,11 +268,11 @@ public class Program
 			// so extract them first even they are set to default, before the language specific extraction
 			// (i don't care about all languages for compatibility formats)
 			List<string> tips = infoExtractor.ExtractTips();
-			List<Folder>? collections = obbFile is null ? null : infoExtractor.ExtractCollection();
+			List<Folder>? collections = obbFile is null ? null : infoExtractor.ExtractCollections();
 
 			Console.WriteLine("Writing non-multi-language information...");
 			extractInfoTo.Create();
-			File.WriteAllText(
+			await File.WriteAllTextAsync(
 				Path.Combine(extractInfoTo.FullName, "info.json"),
 				JsonSerializer.Serialize(new NonMultiLanguageInfos(songs, avatars, chapters)),
 				Encoding.UTF8);
@@ -277,12 +281,12 @@ public class Program
 			{
 				foreach (Language lang in Enum.GetValues<Language>())
 				{
-					ExtractLanguageSpecificInfo(lang);
+					await ExtractLanguageSpecificInfo(lang);
 				}
 			}
 			else
 			{
-				ExtractLanguageSpecificInfo(language);
+				await ExtractLanguageSpecificInfo(language);
 			}
 
 			// PhigrosLibrary_Resource compatible format
@@ -303,24 +307,24 @@ public class Program
 			// seriously why is it named tmp
 			string tmpTsv = string.Join('\n', avatars.Select(x => $"{x.Name}\t{x.AddressablePath[7..]}"));
 
-			File.WriteAllText(Path.Combine(extractInfoTo.FullName, "avatar.txt"), avatarTxt, Encoding.UTF8);
-			File.WriteAllText(Path.Combine(extractInfoTo.FullName, "difficulty.tsv"), difficultyTsv, Encoding.UTF8);
-			File.WriteAllText(Path.Combine(extractInfoTo.FullName, "info.tsv"), infoTsv, Encoding.UTF8);
-			File.WriteAllText(Path.Combine(extractInfoTo.FullName, "tips.txt"), tipsTxt, Encoding.UTF8);
-			File.WriteAllText(Path.Combine(extractInfoTo.FullName, "tmp.tsv"), tmpTsv, Encoding.UTF8);
+			await File.WriteAllTextAsync(Path.Combine(extractInfoTo.FullName, "avatar.txt"), avatarTxt, Encoding.UTF8);
+			await File.WriteAllTextAsync(Path.Combine(extractInfoTo.FullName, "difficulty.tsv"), difficultyTsv, Encoding.UTF8);
+			await File.WriteAllTextAsync(Path.Combine(extractInfoTo.FullName, "info.tsv"), infoTsv, Encoding.UTF8);
+			await File.WriteAllTextAsync(Path.Combine(extractInfoTo.FullName, "tips.txt"), tipsTxt, Encoding.UTF8);
+			await File.WriteAllTextAsync(Path.Combine(extractInfoTo.FullName, "tmp.tsv"), tmpTsv, Encoding.UTF8);
 			if (collectionTsv is not null)
-				File.WriteAllText(Path.Combine(extractInfoTo.FullName, "collection.tsv"), collectionTsv, Encoding.UTF8);
+				await File.WriteAllTextAsync(Path.Combine(extractInfoTo.FullName, "collection.tsv"), collectionTsv, Encoding.UTF8);
 
-			void ExtractLanguageSpecificInfo(Language lang)
+			async Task ExtractLanguageSpecificInfo(Language lang)
 			{
 				infoExtractor.ExtractLanguage = lang;
 
 				Console.WriteLine($"Extracting language specific information for {lang}...");
 				List<string> tips = infoExtractor.ExtractTips();
-				List<Folder>? collections = obbFile is null ? null : infoExtractor.ExtractCollection();
+				List<Folder>? collections = obbFile is null ? null : infoExtractor.ExtractCollections();
 
 				Console.WriteLine($"Writing language specific information for {lang}...");
-				File.WriteAllText(
+				await File.WriteAllTextAsync(
 					Path.Combine(extractInfoTo.FullName, $"tipsAndCollections_{lang}.json"),
 					JsonSerializer.Serialize(new MultiLanguageInfos(collections, tips)),
 					Encoding.UTF8);
@@ -329,11 +333,7 @@ public class Program
 
 		if (extractAssetTo is not null)
 		{
-			string GetAssetOutputPath(string assetPath)
-			{
-				string sanitizedAssetPath = assetPath.Replace('/', Path.DirectorySeparatorChar);
-				return Path.Combine(extractAssetTo.FullName, sanitizedAssetPath);
-			}
+
 
 			if (obbFile is null)
 			{
@@ -342,7 +342,6 @@ public class Program
 			}
 
 			List<Avatar>? avatars = null;
-
 			if (infoExtractor is not null)
 			{
 				avatars = infoExtractor.ExtractAvatars();
@@ -355,85 +354,135 @@ public class Program
 			const string AvatarBasePath = "Assets/Avatar/";
 
 			Directory.CreateDirectory(GetAssetOutputPath(AvatarBasePath));
-			PngEncoder pngEncoder = new();
+			_isDoingWork = true;
+
+			Task logTask = Task.Run(DequeueLogsAsync);
+			Task processTask = Task.Run(WaitForProcessesAsync);
 
 			// name -> hash, like "-SURREALISM-": "3da229e009e3edc8a4824ee0dc7aa87e796a7b47"
 			Dictionary<string, string> avatarMap = [];
-			AddressableBundleExtractor assetExtractor = AddressableBundleExtractor.FromObb(obbFile.OpenRead(), auxObbFile?.OpenRead());
+			PngEncoder pngEncoder = new();
+			AddressableBundleExtractor assetExtractor = await AddressableBundleExtractor.FromObbAsync(obbFile.OpenRead(), auxObbFile?.OpenRead());
 			foreach (string assetPath in assetExtractor.ListMeaningfulAssetPathsInCatalog())
 			{
-				Console.WriteLine($"Extracting {assetPath}...");
-
-				if (assetPath.StartsWith("avatar"))
-				{
-					Image avatar = assetExtractor.GetImageRaw(assetPath).Decode();
-
-					using MemoryStream avatarStream = new();
-					avatar.Save(avatarStream, pngEncoder);
-					avatarStream.Position = 0;
-
-					string hash = SHA1.HashData(avatarStream).ToHexString();
-					File.WriteAllBytes(GetAssetOutputPath($"{AvatarBasePath}{hash}.png"), avatarStream.ToArray());
-
-					if (avatars is null) continue;
-
-					Avatar? avatarInfo = avatars.FirstOrDefault(x => x.AddressablePath == assetPath);
-					if (avatarInfo is null)
-					{
-						Console.WriteLine($"Warning: Cannot find avatar info for {assetPath}, skipping mapping.");
-						continue;
-					}
-
-					avatarMap[avatarInfo.Name] = hash;
-
-					continue;
-				}
-				if (!assetPath.StartsWith("Assets/"))
-				{
-					Console.WriteLine($"Skipping {assetPath} as it is not supported.");
-					continue;
-				}
-
-				if (assetPath.EndsWith(".wav") && !noMusic)
-				{
-					byte[] music = assetExtractor.GetMusicRaw(assetPath).Decode().ToOggBytes();
-					File.WriteAllBytes(GetAssetOutputPath($"{assetPath[..^4]}.ogg").EnsureAssetCanCreate(), music);
-
-					continue;
-				}
-				if (assetPath.EndsWith(".json") && !noCharts)
-				{
-					string content = assetExtractor.GetTextRaw(assetPath).Content;
-					File.WriteAllText(GetAssetOutputPath(assetPath).EnsureAssetCanCreate(), content, Encoding.UTF8);
-
-					continue;
-				}
-				if (assetPath.EndsWith(".jpg") || assetPath.EndsWith(".png"))
-				{
-					if ((assetPath.Contains("/Illustration.") && noIllustration)
-						|| (assetPath.Contains("/IllustrationLowRes.") && noLowResIllustration)
-						|| (assetPath.Contains("/IllustrationBlur.") && noBlurIllustration))
-					{
-						goto Skip;
-					}
-
-					Image image = assetExtractor.GetImageRaw(assetPath).Decode();
-					image.Save(GetAssetOutputPath($"{assetPath[..^4]}.png").EnsureAssetCanCreate(), pngEncoder);
-
-					continue;
-				}
-
-			Skip:
-				Console.WriteLine($"Skipping {assetPath}.");
+				_processQueue.Enqueue(Task.Run(() => ProcessCore(assetPath)));
 			}
+			_isDoingWork = false;
+
+			await Task.WhenAll(logTask, processTask);
 
 			if (avatars is not null)
 			{
 				Console.WriteLine("Writing AvatarInfo...");
-				File.WriteAllText(
+				await File.WriteAllTextAsync(
 					Path.Combine(extractAssetTo.FullName, AvatarBasePath, "AvatarInfo.json"),
 					JsonSerializer.Serialize(avatarMap),
 					Encoding.UTF8);
+			}
+
+			string GetAssetOutputPath(string assetPath)
+			{
+				string sanitizedAssetPath = assetPath.Replace('/', Path.DirectorySeparatorChar);
+				return Path.Combine(extractAssetTo.FullName, sanitizedAssetPath);
+			}
+			// returns processed asset path for logging, or empty if skipped
+			async Task<string?> ProcessCore(string assetPath)
+			{
+				void LogQueuing()
+					=> _logQueue.Enqueue($"Queuing {assetPath} extraction...");
+
+				if (assetPath.StartsWith("avatar"))
+				{
+					LogQueuing();
+					Image avatar = (await assetExtractor.GetImageRawAsync(assetPath)).Decode();
+
+					using MemoryStream avatarStream = new();
+					await avatar.SaveAsync(avatarStream, pngEncoder);
+					avatarStream.Seek(0, SeekOrigin.Begin);
+
+					string hash = SHA1.HashData(avatarStream).ToHexString();
+					await File.WriteAllBytesAsync(GetAssetOutputPath($"{AvatarBasePath}{hash}.png"), avatarStream.ToArray());
+
+					if (avatars is null)
+						goto Return;
+
+					Avatar? avatarInfo = avatars.FirstOrDefault(x => x.AddressablePath == assetPath);
+					if (avatarInfo is null)
+					{
+						_logQueue.Enqueue($"Warning: Cannot find avatar info for {assetPath}, skipping mapping.");
+						goto Return;
+					}
+
+					avatarMap[avatarInfo.Name] = hash;
+
+					goto Return;
+				}
+
+				if (!assetPath.StartsWith("Assets/"))
+					goto Skip;
+
+				if (assetPath.EndsWith(".wav") && !noMusic)
+				{
+					LogQueuing();
+					byte[] music = (await assetExtractor.GetMusicRawAsync(assetPath)).Decode().ToOggBytes();
+					await File.WriteAllBytesAsync(GetAssetOutputPath($"{assetPath[..^4]}.ogg").EnsureAssetCanCreate(), music);
+
+					goto Return;
+				}
+				if (assetPath.EndsWith(".json") && !noCharts)
+				{
+					LogQueuing();
+					string content = (await assetExtractor.GetTextRawAsync(assetPath)).Content;
+					await File.WriteAllTextAsync(GetAssetOutputPath(assetPath).EnsureAssetCanCreate(), content, Encoding.UTF8);
+
+					goto Return;
+				}
+
+				if ((assetPath.Contains("/Illustration.") && noIllustration)
+						|| (assetPath.Contains("/IllustrationLowRes.") && noLowResIllustration)
+						|| (assetPath.Contains("/IllustrationBlur.") && noBlurIllustration))
+				{
+					goto Skip;
+				}
+
+				if (assetPath.EndsWith(".jpg") || assetPath.EndsWith(".png"))
+				{
+					LogQueuing();
+					Image image = (await assetExtractor.GetImageRawAsync(assetPath)).Decode();
+					await image.SaveAsync(GetAssetOutputPath($"{assetPath[..^4]}.png").EnsureAssetCanCreate(), pngEncoder);
+
+					goto Return;
+				}
+
+			Skip:
+				_logQueue.Enqueue($"Skipping {assetPath}.");
+				return null;
+			Return:
+				return assetPath;
+			}
+		}
+	}
+
+	private static async Task DequeueLogsAsync()
+	{
+		while (_isDoingWork || !_logQueue.IsEmpty || !_processQueue.IsEmpty)
+		{
+			while (_logQueue.TryDequeue(out string? log))
+			{
+				Console.WriteLine(log);
+			}
+			await Task.Delay(10);
+		}
+	}
+	private static async Task WaitForProcessesAsync()
+	{
+		while (_isDoingWork || !_processQueue.IsEmpty)
+		{
+			while (_processQueue.TryDequeue(out Task<string?>? process))
+			{
+				string? processed = await process;
+				if (processed is not null)
+					_logQueue.Enqueue($"Processed {processed}.");
 			}
 		}
 	}
