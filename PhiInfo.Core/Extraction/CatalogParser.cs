@@ -7,20 +7,34 @@ using System.Text.Json;
 
 namespace PhiInfo.Core.Extraction;
 
+/// <summary>
+/// Parses catalog data from binary representation and provides access to catalog entries.
+/// This class handles parsing of key, bucket, and entry data to construct a catalog dictionary.
+/// Please use static methods to create an instance of this class since they are more convenient,
+/// or use <see cref="PhigrosAssetHelper"/> methods.
+/// </summary>
 public class CatalogParser
 {
 	private readonly List<CatalogEntry> _entries;
 
+	/// <summary>
+	/// Gets a read-only list of all parsed catalog entries.
+	/// </summary>
 	public IReadOnlyList<CatalogEntry> Entries => this._entries;
+	/// <summary>
+	/// Gets a frozen dictionary of cached entries indexed by their string keys.
+	/// Only entries with string keys are included in this cache.
+	/// </summary>
 	public FrozenDictionary<string, CatalogValue> CachedEntries { get; }
 
 	/// <summary>
 	/// Parses catalog from parsed catalog.json data. Please use static methods to create
 	/// an instance of this class since they are more convenient, or use <see cref="PhigrosAssetHelper"/> methods.
 	/// </summary>
-	/// <param name="keyData"></param>
-	/// <param name="bucketData"></param>
-	/// <param name="entryData"></param>
+	/// <param name="keyData">The binary key data to parse.</param>
+	/// <param name="bucketData">The binary bucket data to parse.</param>
+	/// <param name="entryData">The binary entry data to parse.</param>
+	/// <exception cref="ArgumentException">Thrown when data is invalid or malformed.</exception>
 	public CatalogParser(
 		byte[] keyData,
 		byte[] bucketData,
@@ -32,12 +46,28 @@ public class CatalogParser
 			.ToFrozenDictionary(x => x.Key.StringValue!, x => x.Value);
 	}
 
+	/// <summary>
+	/// Creates a <see cref="CatalogParser"/> from base64-encoded strings.
+	/// </summary>
+	/// <param name="keyDataString">Base64-encoded key data.</param>
+	/// <param name="bucketDataString">Base64-encoded bucket data.</param>
+	/// <param name="entryDataString">Base64-encoded entry data.</param>
+	/// <returns>A new <see cref="CatalogParser"/> instance.</returns>
+	/// <exception cref="FormatException">Thrown when base64 strings are invalid.</exception>
 	public static CatalogParser FromBase64Strings(string keyDataString, string bucketDataString, string entryDataString)
 	{
 		return new(Convert.FromBase64String(keyDataString),
 				Convert.FromBase64String(bucketDataString),
 				Convert.FromBase64String(entryDataString));
 	}
+
+	/// <summary>
+	/// Creates a <see cref="CatalogParser"/> from a JSON stream.
+	/// </summary>
+	/// <param name="json">A stream containing JSON-formatted catalog data.</param>
+	/// <param name="ct">A cancellation token to observe while waiting for the task to complete.</param>
+	/// <returns>A new <see cref="CatalogParser"/> instance.</returns>
+	/// <exception cref="ArgumentException">Thrown when the JSON is invalid or missing required fields.</exception>
 	public static async Task<CatalogParser> FromJsonAsync(Stream json, CancellationToken ct = default)
 	{
 		RawCatalogModel? data = await JsonSerializer.DeserializeAsync(json, CatalogModelJsonContext.Default.RawCatalogModel, ct)
@@ -45,6 +75,14 @@ public class CatalogParser
 
 		return FromBase64Strings(data.KeyDataString, data.BucketDataString, data.EntryDataString);
 	}
+
+	/// <summary>
+	/// Creates a <see cref="CatalogParser"/> from an OBB (Opaque Binary Blob) stream.
+	/// </summary>
+	/// <param name="obb">A stream containing OBB data with embedded catalog information.</param>
+	/// <param name="ct">A cancellation token to observe while waiting for the task to complete.</param>
+	/// <returns>A new <see cref="CatalogParser"/> instance.</returns>
+	/// <exception cref="ArgumentException">Thrown when the OBB is invalid or catalog cannot be extracted.</exception>
 	public static async Task<CatalogParser> FromObbAsync(Stream obb, CancellationToken ct = default)
 	{
 		using Stream catalogStream = PhigrosAssetHelper.GetCatalogStreamFromObb(obb);

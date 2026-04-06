@@ -13,6 +13,10 @@ namespace PhiInfo.Core.Extraction;
 /// <param name="ct">Cancellation token.</param>
 /// <returns>A stream to the bundle file. Must be seekable and readable. Will be disposed after use.</returns>
 public delegate Task<Stream> BundleStreamFactory(string path, CancellationToken ct = default);
+
+/// <summary>
+/// Extractor for addressable asset bundles. Only supports Texture2D, AudioClip and TextAsset.
+/// </summary>
 public class AddressableBundleExtractor
 {
 	private record struct MappedAssetBundle(AssetBundleFile BundleFile, AssetsFile InfoAssetFile) : IDisposable

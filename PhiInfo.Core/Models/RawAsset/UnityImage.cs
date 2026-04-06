@@ -15,6 +15,13 @@ namespace PhiInfo.Core.Models.RawAsset;
 /// to be decoded using <see cref="EtcDecoder"/>.</param>
 public record UnityImage(uint Format, uint Width, uint Height, byte[] Data)
 {
+	/// <summary>
+	/// Create a image buffer with header structure of:
+	/// char letter H, uint format, uint height, uint width, byte[] data.
+	/// 
+	/// (Actually idk where and why is this used)
+	/// </summary>
+	/// <returns></returns>
 	public byte[] CraftImageBufferWithHeader()
 	{
 		const int StaticHeaderSize = sizeof(byte) + sizeof(uint) + sizeof(uint) + sizeof(uint);

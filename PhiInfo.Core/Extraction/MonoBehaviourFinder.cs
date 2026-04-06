@@ -6,6 +6,9 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace PhiInfo.Core.Extraction;
 
+/// <summary>
+/// Finds and reads <c>MonoBehaviour</c> instances from Unity asset files.
+/// </summary>
 public class MonoBehaviourFinder : IDisposable
 {
 	private bool _disposed;
@@ -51,12 +54,15 @@ public class MonoBehaviourFinder : IDisposable
 		this._templateGenerator.SetUnityVersion(new UnityVersion(this._globalGameManagers.Metadata.UnityVersion));
 		this._templateGenerator.InitializeCpp2IL();
 	}
-
+	/// <summary>
+	/// Finalizes this instance and dispose all resources.
+	/// </summary>
 	~MonoBehaviourFinder()
 	{
 		this.Dispose();
 	}
 
+	/// <inheritdoc/>
 	public void Dispose()
 	{
 		if (this._disposed) return;
@@ -221,6 +227,13 @@ public class MonoBehaviourFinder : IDisposable
 		return !string.IsNullOrEmpty(assemblyName) && !string.IsNullOrEmpty(className) && nameSpace is not null;
 	}
 
+	/// <summary>
+	/// Attempts to find a <c>MonoBehaviour</c> by its associated script name.
+	/// </summary>
+	/// <param name="file">The asset file to search.</param>
+	/// <param name="name">The script name to match.</param>
+	/// <returns>The matching <see cref="AssetTypeValueField"/>, or <see langword="null"/> if not found.</returns>
+	/// <exception cref="ObjectDisposedException">Thrown when this instance has already been disposed.</exception>
 	public AssetTypeValueField? TryFindMonoBehaviour(AssetsFile file, string name)
 	{
 		if (this._disposed)
@@ -254,7 +267,13 @@ public class MonoBehaviourFinder : IDisposable
 
 		return null;
 	}
-
+	/// <summary>
+	/// Finds a <c>MonoBehaviour</c> by its associated script name.
+	/// </summary>
+	/// <param name="file">The asset file to search.</param>
+	/// <param name="name">The script name to match.</param>
+	/// <returns>The matching <see cref="AssetTypeValueField"/>.</returns>
+	/// <exception cref="ArgumentException">Thrown when the requested <c>MonoBehaviour</c> is not found.</exception>
 	public AssetTypeValueField FindMonoBehaviour(AssetsFile file, string name)
 	{
 		return this.TryFindMonoBehaviour(file, name)

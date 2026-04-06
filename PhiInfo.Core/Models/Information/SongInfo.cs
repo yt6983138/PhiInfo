@@ -24,12 +24,32 @@ public record SongInfo(
 	Dictionary<Difficulty, SongLevel> Levels)
 {
 
+	/// <summary>
+	/// Gets the addressable path to the low-resolution illustration.
+	/// </summary>
 	public string LowResolutionIllustrationAddressablePath => $"Assets/Tracks/{this.Id}/IllustrationLowRes.jpg";
+
+	/// <summary>
+	/// Gets the addressable path to the full-resolution illustration.
+	/// </summary>
 	public string IllustrationAddressablePath => $"Assets/Tracks/{this.Id}/Illustration.jpg";
+
+	/// <summary>
+	/// Gets the addressable path to the blurred illustration.
+	/// </summary>
 	public string BlurIllustrationAddressablePath => $"Assets/Tracks/{this.Id}/IllustrationBlur.jpg";
 
+	/// <summary>
+	/// Gets the addressable path to the music file.
+	/// </summary>
 	public string MusicAddressablePath => $"Assets/Tracks/{this.Id}/music.wav";
 
+	/// <summary>
+	/// Gets the addressable path for a specific chart difficulty.
+	/// </summary>
+	/// <param name="difficulty">The difficulty level of the chart.</param>
+	/// <returns>The addressable asset path string.</returns>
+	/// <exception cref="ArgumentException">Thrown if the song does not contain the specified difficulty.</exception>
 	public string GetChartAddressablePath(Difficulty difficulty)
 	{
 		if (!this.Levels.ContainsKey(difficulty))

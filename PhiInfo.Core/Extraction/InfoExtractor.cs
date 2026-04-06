@@ -21,6 +21,10 @@ public class InfoExtractor : IDisposable
 	private readonly AssetsFileReader _level0Reader;
 	private readonly AssetsFileReader? _level22Reader;
 
+	/// <summary>
+	/// Checks if this instance is disposed. Accessing any method after this is true 
+	/// may cause <see cref="ObjectDisposedException"/> or <see cref="NullReferenceException"/>.
+	/// </summary>
 	public bool Disposed { get; private set; }
 
 	/// <summary>
@@ -75,6 +79,9 @@ public class InfoExtractor : IDisposable
 			classDataTPK
 		);
 	}
+	/// <summary>
+	/// Finalizes this instance. Disposes this instance as well.
+	/// </summary>
 	~InfoExtractor()
 	{
 		this.Dispose();
@@ -124,6 +131,7 @@ public class InfoExtractor : IDisposable
 		);
 	}
 
+	/// <inheritdoc/>
 	public void Dispose()
 	{
 		if (this.Disposed) return;
@@ -199,6 +207,10 @@ public class InfoExtractor : IDisposable
 	}
 #pragma warning restore CA1822 // Mark members as static
 
+	/// <summary>
+	/// Extract information for each song.
+	/// </summary>
+	/// <returns>A list of infomation about each song.</returns>
 	public List<SongInfo> ExtractSongInfo()
 	{
 		List<SongInfo> result = [];
@@ -251,6 +263,13 @@ public class InfoExtractor : IDisposable
 		return result;
 	}
 
+	/// <summary>
+	/// Extract collections in <see cref="ExtractLanguage"/>.
+	/// This require level22, so if it is not supplied in the constructor, 
+	/// this method will throw <see cref="InvalidOperationException"/>.
+	/// </summary>
+	/// <returns>A list of collections. Phigros organizes them in a Folder/File structure.</returns>
+	/// <exception cref="InvalidOperationException">Thrown if level22 is not supplied in constructor.</exception>
 	public List<Folder> ExtractCollections()
 	{
 		if (this._level22 is null)
@@ -284,6 +303,10 @@ public class InfoExtractor : IDisposable
 		return result;
 	}
 
+	/// <summary>
+	/// Extract avatar information.
+	/// </summary>
+	/// <returns>A list of avatar information.</returns>
 	public List<Avatar> ExtractAvatars()
 	{
 		AssetTypeValueField avatarField = this._monoBehaviourFinder.FindMonoBehaviour(this._level0, "GetCollectionControl");
@@ -293,6 +316,10 @@ public class InfoExtractor : IDisposable
 			.ToList();
 	}
 
+	/// <summary>
+	/// Extract tips in <see cref="ExtractLanguage"/>.
+	/// </summary>
+	/// <returns>A list of tips (the ones you see when you load a song)</returns>
 	public List<string> ExtractTips()
 	{
 
@@ -311,6 +338,10 @@ public class InfoExtractor : IDisposable
 
 	}
 
+	/// <summary>
+	/// Extract chapter information, such as their name and songs etc.
+	/// </summary>
+	/// <returns>A list of chapter information.</returns>
 	public List<ChapterInfo> ExtractChapters()
 	{
 		List<ChapterInfo> result = [];

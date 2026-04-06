@@ -77,6 +77,14 @@ public static class PhigrosAssetHelper
 		ZipArchive zip = new(obb, ZipArchiveMode.Read, true);
 		return await BuildCompleteLevel22FromZipAsync(zip, ct);
 	}
+	/// <summary>
+	/// Extracts required data for information extraction from the provided APK stream.
+	/// </summary>
+	/// <param name="apk">The APK file stream.</param>
+	/// <param name="ct">Cancellation token.</param>
+	/// <returns>A tuple containing streams for <c>globalgamemanagers.assets</c> and <c>level0</c>, 
+	/// and byte arrays for <c>libil2cpp.so</c> and <c>global-metadata.dat</c>.</returns>
+	/// <exception cref="FileNotFoundException">Thrown if any of the required assets are missing from the APK.</exception>
 	public static async Task<(Stream GlobalGameManagers, Stream Level0, byte[] Il2CppSo, byte[] GlobalMetadata)> GetInformationExtractionRequiredDataAsync(
 		Stream apk, CancellationToken ct = default)
 	{

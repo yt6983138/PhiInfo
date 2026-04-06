@@ -3,6 +3,10 @@ using PhiInfo.Core.Models;
 using System.Reflection;
 
 namespace PhiInfo.Core;
+
+/// <summary>
+/// Utility extension methods for various types in this project.
+/// </summary>
 public static class Extensions
 {
 	private static Dictionary<Language, LanguageStringIdAttribute> _langAttributeMap = typeof(Language)
@@ -31,6 +35,12 @@ public static class Extensions
 		}
 	}
 
+	/// <summary>
+	/// Get string ID associated with a language, as defined by the 
+	/// <see cref="LanguageStringIdAttribute"/> on the <see cref="Language"/> enum fields.
+	/// </summary>
+	/// <param name="lang">The language to convert.</param>
+	/// <returns>The string id associated with specified enum value.</returns>
 	public static string GetStringId(this Language lang)
 	{
 		return _langAttributeMap[lang].Id;
