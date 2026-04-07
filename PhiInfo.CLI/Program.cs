@@ -120,13 +120,13 @@ public class Program
 		Description = """
 			Extract collections and tips using language. If All is specified, all language
 			will be extracted. However, Phigros_Resource compatible format will always be extracted 
-			using English since it does not support multiple languages.
+			using EnglishUS since it does not support multiple languages.
 			""",
 		Required = false,
 		CustomParser = result =>
 		{
 			if (result.Tokens.Count == 0)
-				return Language.English;
+				return Language.EnglishUS;
 			string token = result.Tokens[0].Value;
 
 			if (token == "All")
@@ -255,7 +255,7 @@ public class Program
 				obbFile?.OpenRead(),
 				classDataFile.OpenRead());
 
-			infoExtractor.ExtractLanguage = language == AllLanguage ? Language.English : language;
+			infoExtractor.ExtractLanguage = language == AllLanguage ? Language.EnglishUS : language;
 			// prevents info extractor from being confused by multiple languages since the enum is custom defined,
 			// it will be set in the info extraction part if All is specified, setting English here prevents potential
 			// problems in asset extraction part

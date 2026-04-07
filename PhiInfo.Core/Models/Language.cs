@@ -25,7 +25,7 @@ public enum Language
 	/// Simplified Chinese language.
 	/// </summary>
 	[LanguageStringId("chinese")]
-	Chinese = 0x28,
+	SimplifiedChinese = 0x28,
 
 	/// <summary>
 	/// Traditional Chinese language.
@@ -37,7 +37,7 @@ public enum Language
 	/// English language.
 	/// </summary>
 	[LanguageStringId("english")]
-	English = 0x0A,
+	EnglishUS = 0x0A,
 
 	/// <summary>
 	/// Japanese language.

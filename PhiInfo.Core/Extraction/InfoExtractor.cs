@@ -30,7 +30,7 @@ public class InfoExtractor : IDisposable
 	/// <summary>
 	/// Extracts collections and tips in the specified language. Default is Chinese.
 	/// </summary>
-	public Language ExtractLanguage { get; set; } = Language.Chinese;
+	public Language ExtractLanguage { get; set; } = Language.SimplifiedChinese;
 
 	/// <summary>
 	/// Warning: Newing multiple instances of this class (concurrently) may cause unexpected behaviour,

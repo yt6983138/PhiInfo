@@ -52,7 +52,7 @@ options:
 | `--no-blur-illustration` | | `false` | Do not extract blurred illustrations. |
 | `--no-music` | | `false` | Do not extract music. |
 | `--no-charts` | | `false` | Do not extract charts. |
-| `--language` | `Chinese`, `English`, `Japanese`, `Korean`, `TraditionalChinese`, `All` | | Target language for extracting collections and tips. |
+| `--language` | `SimplifiedChinese`, `EnglishUS`, `Japanese`, `Korean`, `TraditionalChinese`, `All` | | Target language for extracting collections and tips. |
 | `-?, -h, --help` | | | Show help and usage information. |
 | `--version` | | | Show version information. |
 
