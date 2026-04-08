@@ -5,4 +5,4 @@ namespace PhiInfo.Core.Models.Information;
 /// </summary>
 /// <param name="Charter">Chart author name. I.e. <c>jouR.ney with hold</c></param>
 /// <param name="ChartConstant">Chart constant of the chart. I.e. <c>5</c></param>
-public record SongLevel(string Charter, double ChartConstant);
+public record SongLevel(string Charter, float ChartConstant);

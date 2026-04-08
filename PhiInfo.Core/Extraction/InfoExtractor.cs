@@ -241,7 +241,7 @@ public class InfoExtractor : IDisposable
 
 					levelsDict[difficulty] = new SongLevel(
 						charter,
-						Math.Round(diff, 1)
+						(float)Math.Round(diff, 1)
 					);
 				}
 
