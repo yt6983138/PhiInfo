@@ -66,6 +66,9 @@ for any legal issues caused by using these resources.
 If `南京鸽游网络有限公司` aka `Pigeon Games`, or any other copyright holders, have any 
 issues with this project, please contact me.
 
+**WARNING: DO NOT use any asset or info extracted by this tool in commercial way. 
+This can get both developers and you in trouble.**
+
 ### After 2026/03/22
 Open sourced under `AGPL-3.0-only` license.
 ### Before 2026/03/22
