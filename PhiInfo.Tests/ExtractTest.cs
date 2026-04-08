@@ -42,13 +42,16 @@ public sealed class ExtractTest
 		//	File.OpenRead(Helper.TestObbPath),
 		//	File.OpenRead(Helper.TestClassDataTPKPath));
 
-		AddressableBundleExtractor assetExtractor = await AddressableBundleExtractor.FromObbAsync(File.OpenRead(Helper.TestObbPath));
+		AddressableBundleExtractor assetExtractor = await AddressableBundleExtractor.FromObbAsync(
+			File.OpenRead(Helper.TestObbPath),
+			File.Exists(Helper.TestAuxObbPath) ? File.OpenRead(Helper.TestAuxObbPath) : null);
 
 		Console.WriteLine("Assets in catalog:");
 		Console.WriteLine(string.Join('\n', assetExtractor.ListMeaningfulAssetPathsInCatalog()));
 		Console.WriteLine("Assets in catalog end");
 
 		SixLabors.ImageSharp.Image image = (await assetExtractor.GetImageRawAsync("Assets/Tracks/Glaciaxion.SunsetRay.0/IllustrationLowRes.jpg")).Decode();
+		SixLabors.ImageSharp.Image image2 = (await assetExtractor.GetImageRawAsync("avatar.praw")).Decode();
 		Fmod5Sharp.FmodTypes.FmodSoundBank music = (await assetExtractor.GetMusicRawAsync("Assets/Tracks/DiamondEyes.SYNTHETIC.0/music.wav")).Decode();
 		string chart = (await assetExtractor.GetTextRawAsync("Assets/Tracks/Elúltimobaile.Θ.0/Chart_EZ.json")).Content;
 
