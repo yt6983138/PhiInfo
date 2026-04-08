@@ -2,6 +2,7 @@ using AssetRipper.TextureDecoder.Etc;
 using AssetRipper.TextureDecoder.Rgb.Formats;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
 
 namespace PhiInfo.Core.Models.RawAsset;
 
@@ -45,18 +46,27 @@ public record UnityImage(uint Format, uint Width, uint Height, byte[] Data)
 		int width = (int)this.Width;
 		int height = (int)this.Height;
 
+		// images are flipped vertically for some reason
 		switch (this.Format)
 		{
 			case 3:
-				return Image.LoadPixelData<Rgb24>(this.Data, width, height);
+				Image<Rgb24> img = Image.LoadPixelData<Rgb24>(this.Data, width, height);
+				img.Mutate(x => x.Flip(FlipMode.Vertical));
+				return img;
 			case 4:
-				return Image.LoadPixelData<Rgba32>(this.Data, width, height);
+				Image<Rgba32> img2 = Image.LoadPixelData<Rgba32>(this.Data, width, height);
+				img2.Mutate(x => x.Flip(FlipMode.Vertical));
+				return img2;
 			case 34:
 				EtcDecoder.DecompressETC<ColorBGRA<byte>, byte>(this.Data, width, height, out byte[] etc);
-				return Image.LoadPixelData<Bgra32>(etc, width, height);
+				Image<Bgra32> img3 = Image.LoadPixelData<Bgra32>(etc, width, height);
+				img3.Mutate(x => x.Flip(FlipMode.Vertical));
+				return img3;
 			case 47:
 				EtcDecoder.DecompressETC2A8<ColorBGRA<byte>, byte>(this.Data, width, height, out byte[] etc2a8);
-				return Image.LoadPixelData<Bgra32>(etc2a8, width, height);
+				Image<Bgra32> img4 = Image.LoadPixelData<Bgra32>(etc2a8, width, height);
+				img4.Mutate(x => x.Flip(FlipMode.Vertical));
+				return img4;
 			default:
 				throw new NotSupportedException($"Unsupported image format: {this.Format}");
 		}
