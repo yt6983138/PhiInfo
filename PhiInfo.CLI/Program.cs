@@ -16,17 +16,16 @@ using System.Text.Json.Serialization;
 
 namespace PhiInfo.CLI;
 
-public class Program
-{
-	private record struct NonMultiLanguageInfos(List<SongInfo> Songs,
+public record class NonMultiLanguageInfos(List<SongInfo> Songs,
 		List<Avatar> Avatars,
 		List<ChapterInfo> Chapters);
-	private record struct MultiLanguageInfos(List<Folder>? Collections,
-		List<string> Tips);
-
+public record class MultiLanguageInfos(List<Folder>? Collections,
+	List<string> Tips);
+public class Program
+{
 	private const Language AllLanguage = unchecked((Language)0xFFFFFFFF);
 
-	private static readonly JsonSerializerOptions _jsonOptions = new()
+	public static readonly JsonSerializerOptions JsonOptions = new()
 	{
 		PropertyNamingPolicy = null,
 		PropertyNameCaseInsensitive = true,
@@ -286,7 +285,7 @@ public class Program
 			extractInfoTo.Create();
 			await File.WriteAllTextAsync(
 				Path.Combine(extractInfoTo.FullName, "info.json"),
-				JsonSerializer.Serialize(new NonMultiLanguageInfos(songs, avatars, chapters), _jsonOptions),
+				JsonSerializer.Serialize(new NonMultiLanguageInfos(songs, avatars, chapters), JsonOptions),
 				Encoding.UTF8);
 
 			if (language == AllLanguage)
@@ -338,7 +337,7 @@ public class Program
 				Console.WriteLine($"Writing language specific information for {lang}...");
 				await File.WriteAllTextAsync(
 					Path.Combine(extractInfoTo.FullName, $"tipsAndCollections_{lang}.json"),
-					JsonSerializer.Serialize(new MultiLanguageInfos(collections, tips), _jsonOptions),
+					JsonSerializer.Serialize(new MultiLanguageInfos(collections, tips), JsonOptions),
 					Encoding.UTF8);
 			}
 		}
@@ -388,7 +387,7 @@ public class Program
 				Console.WriteLine("Writing AvatarInfo...");
 				await File.WriteAllTextAsync(
 					Path.Combine(extractAssetTo.FullName, AvatarBasePath, "AvatarInfo.json"),
-					JsonSerializer.Serialize(avatarMap, _jsonOptions),
+					JsonSerializer.Serialize(avatarMap, JsonOptions),
 					Encoding.UTF8);
 			}
 
