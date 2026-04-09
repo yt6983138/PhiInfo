@@ -136,7 +136,7 @@ public class Program
 				return language;
 			}
 			result.AddError($"Failed to parse language. Valid values: {string.Join(", ", Enum.GetValues<Language>().Select(x => x.ToString()).Concat(["All"]))}");
-			return default;
+			return Language.EnglishUS;
 		}
 	};
 
@@ -179,6 +179,12 @@ public class Program
 
 	private static async Task AfterArgumentParsedAsync(ParseResult parseResult)
 	{
+		if (parseResult.Tokens.Count == 0)
+		{
+			Console.WriteLine("Warning: No arguments provided. Use --help to see available options.");
+			return;
+		}
+
 		string? downloadApk = parseResult.GetValue(DownloadApkOption);
 		string? downloadClassData = parseResult.GetValue(DownloadClassDataOption);
 

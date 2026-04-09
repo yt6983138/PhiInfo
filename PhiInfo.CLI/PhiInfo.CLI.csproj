@@ -6,7 +6,7 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<LangVersion>preview</LangVersion>
 		<OutputType>Exe</OutputType>
-		<AssemblyVersion>1.1.1</AssemblyVersion>
+		<AssemblyVersion>1.1.2</AssemblyVersion>
 		<PackAsTool>true</PackAsTool>
 		<ToolCommandName>phi-info-extract</ToolCommandName>
 
