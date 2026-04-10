@@ -20,18 +20,25 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		AsLibrary|Any CPU = AsLibrary|Any CPU
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{DC634177-D135-C648-B100-FD0F1D40A989}.AsLibrary|Any CPU.ActiveCfg = AsLibrary|Any CPU
+		{DC634177-D135-C648-B100-FD0F1D40A989}.AsLibrary|Any CPU.Build.0 = AsLibrary|Any CPU
 		{DC634177-D135-C648-B100-FD0F1D40A989}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{DC634177-D135-C648-B100-FD0F1D40A989}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DC634177-D135-C648-B100-FD0F1D40A989}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DC634177-D135-C648-B100-FD0F1D40A989}.Release|Any CPU.Build.0 = Release|Any CPU
+		{105ACF9D-45D1-5F7F-B0C2-7F1764E341CB}.AsLibrary|Any CPU.ActiveCfg = Debug|Any CPU
+		{105ACF9D-45D1-5F7F-B0C2-7F1764E341CB}.AsLibrary|Any CPU.Build.0 = Debug|Any CPU
 		{105ACF9D-45D1-5F7F-B0C2-7F1764E341CB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{105ACF9D-45D1-5F7F-B0C2-7F1764E341CB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{105ACF9D-45D1-5F7F-B0C2-7F1764E341CB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{105ACF9D-45D1-5F7F-B0C2-7F1764E341CB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A214891B-862A-4592-B01E-A8BE0D2587A2}.AsLibrary|Any CPU.ActiveCfg = Debug|Any CPU
+		{A214891B-862A-4592-B01E-A8BE0D2587A2}.AsLibrary|Any CPU.Build.0 = Debug|Any CPU
 		{A214891B-862A-4592-B01E-A8BE0D2587A2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{A214891B-862A-4592-B01E-A8BE0D2587A2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A214891B-862A-4592-B01E-A8BE0D2587A2}.Release|Any CPU.ActiveCfg = Release|Any CPU

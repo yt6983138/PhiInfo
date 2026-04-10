@@ -5,12 +5,8 @@
 		<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<LangVersion>preview</LangVersion>
-		<OutputType>Exe</OutputType>
 		<AssemblyVersion>1.1.2</AssemblyVersion>
-		<PackAsTool>true</PackAsTool>
-		<ToolCommandName>phi-info-extract</ToolCommandName>
-
-		<PackageId>yt6983138.$(AssemblyName)</PackageId>
+		
 		<Version>$(AssemblyVersion)</Version>
 		<Authors>yt6983138,Shua-github</Authors>
 		<Description>
@@ -23,6 +19,20 @@
 		<PackageTags>unity;extraction;c#;.net;.netcore;phigros;cli;tool</PackageTags>
 
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+
+		<Configurations>Debug;Release;AsLibrary</Configurations>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)'!='AsLibrary'">
+		<OutputType>Exe</OutputType>
+		<PackAsTool>true</PackAsTool>
+		<ToolCommandName>phi-info-extract</ToolCommandName>
+		<PackageId>yt6983138.$(AssemblyName)</PackageId>
+	</PropertyGroup>
+	
+	<PropertyGroup Condition="'$(Configuration)'=='AsLibrary'">
+		<OutputType>Library</OutputType>
+		<PackageId>yt6983138.$(AssemblyName).Library</PackageId>
 	</PropertyGroup>
 	
 	<ItemGroup>
