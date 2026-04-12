@@ -58,6 +58,89 @@ options:
 
 More detail can be found in the CLI help message.
 
+## Developers: Get started
+AI generated wiki: [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/yt6983138/PhiInfo)
+### Installation
+Currently, there is no nuget package as the original author does not want to
+upload to nuget gallery due to the nature of this project being a gray-area one. 
+
+Which means, you can only reference this project by using `git submodule` or 
+by maintaining your own package on other nuget servers.
+### Info extraction
+Use `InfoExtractor` to extract informations. 
+
+Hint: Many classes have static factory methods, which are much more convenient, 
+and we also have helper classes like `PhigrosAssetHelper` to help you prepare resources.
+
+Example code:
+```csharp
+// Open your Phigros APK, OBB, and classdata.tpk files
+// If your apk is from TapTap, supplying arguments such as auxObb or obb
+// using just apk stream will work since taptap does not split resources.
+//
+// Just remember to open two different streams otherwise there might be
+// concurrency issues
+using Stream apk = File.OpenRead("com.PigeonGames.Phigros.apk");
+using Stream obb = File.OpenRead("main.obb");
+using Stream classDataTpk = File.OpenRead("classdata.tpk");
+  
+// Construct the extractor from static factory method,
+// please do not construct the extractor multiple times, 
+// check the constructor documentation for details.
+using InfoExtractor extractor = await InfoExtractor.FromApkAndObbAsync(apk, obb, classDataTpk);  
+  
+// Check game version and region
+Console.WriteLine($"Phigros version: {extractor.GetVersionString()} ({extractor.GetVersionInteger()})");
+Console.WriteLine($"International build: {extractor.GetIsInternational()}");
+  
+// Extract non-language-specific info
+List<SongInfo> songs = extractor.ExtractSongInfo(); 
+List<Avatar> avatars = extractor.ExtractAvatars();
+List<ChapterInfo> chapters = extractor.ExtractChapters();
+
+// Extract language-specific collections and tips
+// Note: ExtractLanguage defaults to Language.SimplifiedChinese,
+// and this does not support a "All" option (you can only use that with CLI)
+extractor.ExtractLanguage = Language.EnglishUS;
+
+List<string> tips = extractor.ExtractTips();
+List<Folder> collections = extractor.ExtractCollections(); // requires OBB (level22)
+```
+### Asset extraction
+Use `AssetExtractor` to extract assets.
+
+Hint: As mentioned above, many classes have static factory methods, 
+which are much more convenient, and we also have helper classes 
+like `PhigrosAssetHelper` to help you prepare resources.
+
+Example code:
+```csharp
+// Please check the information extraction example for details about
+// how to prepare streams.
+using Stream obb = File.OpenRead("main.obb");
+using Stream auxObb = File.OpenRead("patch.obb"); // optional auxiliary OBB  
+  
+AddressableBundleExtractor assetExtractor =
+    await AddressableBundleExtractor.FromObbAsync(obb, auxObb);
+  
+// List all available asset paths, this would trim out entries that only contains
+// bundle name. Misc entries like shaders or ui assets may still exist.
+List<string> paths = assetExtractor.ListMeaningfulAssetPathsInCatalog();
+  
+// Extract a song illustration as PNG
+UnityImage rawImage = await assetExtractor.GetImageRawAsync("Assets/Tracks/Glaciaxion.SunsetRay.0/IllustrationLowRes.jpg");
+Image image = rawImage.Decode();
+await image.SaveAsync("illustration.png", new PngEncoder());
+  
+// Extract a song's audio as OGG
+var rawMusic = await assetExtractor.GetMusicRawAsync("Assets/Tracks/Glaciaxion.SunsetRay.0/music.wav");
+var bank = rawMusic.Decode();
+File.WriteAllBytes("music.ogg", bank.ToOggBytes());
+  
+// Extract a chart file  
+var chart = await assetExtractor.GetTextRawAsync("Assets/Tracks/Glaciaxion.SunsetRay.0/Chart_IN.json");
+File.WriteAllText("Chart_IN.json", chart.Content);
+```
 ## License
 Extracted resources are copyrighted by `南京鸽游网络有限公司` aka `Pigeon Games` and 
 their own authors, I do not own any of the resources, and I am not responsible 

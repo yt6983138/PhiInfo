@@ -48,6 +48,9 @@ public class AddressableBundleExtractor
 	/// <summary>
 	/// Please see <see cref="AddressableBundleExtractor(CatalogParser, BundleStreamFactory)"/> for
 	/// more information.
+	/// 
+	/// If you are using merged apk file (like from TapTap), supplying arguments using apk is also accepted.
+	/// <paramref name="obb"/> and <paramref name="auxObb"/> are not strictly required to be obb since they are just zip anyways.
 	/// </summary>
 	/// <param name="obb">The obb file. May need <paramref name="auxObb"/> sometimes.</param>
 	/// <param name="auxObb">The auxiliary (patch) obb file.</param>

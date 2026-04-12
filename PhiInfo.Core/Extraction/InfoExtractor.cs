@@ -42,6 +42,9 @@ public class InfoExtractor : IDisposable
 	/// All streams passed to this constructor should be seekable and support reading, and they will be 
 	/// disposed when the InfoExtractor is disposed. The <paramref name="level22"/> stream can be null, but if it is null, 
 	/// collection data cannot be extracted.
+	/// 
+	/// If you are using merged apk file (like from TapTap), supplying all arguments from just apk is also accepted.
+	/// Arguments marked as "In obb" are not strictly required to be in obb since they are just zip anyways.
 	/// </summary>
 	/// <param name="globalGameManagers">The <c>assets/bin/Data/globalgamemanagers.assets</c> file. (In apk)</param>
 	/// <param name="level0">The <c>assets/bin/Data/level0</c> file. (In apk)</param>
@@ -109,6 +112,9 @@ public class InfoExtractor : IDisposable
 	/// <summary>
 	/// Constructs an <see cref="InfoExtractor"/> from apk and obb streams. Please see warning at 
 	/// <see cref="InfoExtractor(Stream, Stream, Stream?, byte[], byte[], Stream)" />.
+	/// 
+	/// If you are using merged apk file (like from TapTap), supplying arguments using apk is also accepted.
+	/// <paramref name="obb"/> is not strictly required to be obb since it is just zip anyways.
 	/// </summary>
 	/// <param name="apk">Apk file stream.</param>
 	/// <param name="obb">Obb file stream.</param>
@@ -148,7 +154,7 @@ public class InfoExtractor : IDisposable
 
 #pragma warning disable CA1822 // Mark members as static
 	/// <summary>
-	/// Get the Phigros version in integer form. This is intentionally made static as it requires
+	/// Get the Phigros version in integer form. This is intentionally made not static as it requires
 	/// Cpp2Il to be initialized (which is done when newing a instance of this class).
 	/// </summary>
 	/// <returns>Phigros version in integer form.</returns>

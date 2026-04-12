@@ -68,6 +68,9 @@ public static class PhigrosAssetHelper
 
 	/// <summary>
 	/// Create a complete level22 stream from obb. <see cref="BuildCompleteLevel22FromZipAsync(ZipArchive, CancellationToken)"/>.
+	/// 
+	/// If you are using merged apk file (like from TapTap), supplying <paramref name="obb"/> using apk is also accepted.
+	/// <paramref name="obb"/> is not strictly required to be obb since it is just zip anyways.
 	/// </summary>
 	/// <param name="obb">The obb file.</param>
 	/// <param name="ct">Cancellation token.</param>
@@ -102,6 +105,9 @@ public static class PhigrosAssetHelper
 
 	/// <summary>
 	/// Get catalog.json stream from obb. This file is map from addressable path to bundle hash.
+	/// 
+	/// If you are using merged apk file (like from TapTap), supplying <paramref name="obb"/> using apk is also accepted.
+	/// <paramref name="obb"/> is not strictly required to be obb since it is just zip anyways.
 	/// </summary>
 	/// <param name="obb">The obb file.</param>
 	/// <returns>A non-seekable catalog.json stream.</returns>
@@ -115,6 +121,9 @@ public static class PhigrosAssetHelper
 	/// Creates a bundle stream factory from obb, which bundle name to obb path. The returned factory 
 	/// will first try to get the bundle from the main obb, and if not found, it will try to get it 
 	/// from the auxiliary (patch) obb if provided.
+	/// 
+	/// If you are using merged apk file (like from TapTap), supplying arguments using apk is also accepted.
+	/// <paramref name="obb"/> and <paramref name="auxObb"/> are not strictly required to be obb since they are just zip anyways.
 	/// </summary>
 	/// <param name="obb">The main obb file.</param>
 	/// <param name="auxObb">The auxiliary obb file.</param>
