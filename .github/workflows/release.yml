@@ -27,6 +27,7 @@ jobs:
           ls -al ./Artifacts/
           gh release create "${{ inputs.version }}" \
             ./Artifacts/* \
-            --repo="$GITHUB_REPOSITORY" \
             --title="Release ${{ inputs.version }}" \
             --generate-notes
+      - name: Cleanup
+        run: rm -rf ./Artifacts/

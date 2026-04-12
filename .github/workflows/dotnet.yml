@@ -22,6 +22,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v6
+      with:
+        clean: false
 
     - name: Get short SHA # idk why is this here so i decided to not touch it
       run: echo "SHA7=$(echo ${GITHUB_SHA} | cut -c1-7)" >> $GITHUB_ENV
