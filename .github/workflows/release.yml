@@ -24,9 +24,7 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           gh release create "${{ inputs.version }}" \
-            ./PhiInfo.Core/bin/Release/*.nupkg \
-            ./PhiInfo.CLI/bin/Release/*.nupkg \
-            ./PhiInfo.CLI/bin/AsLibrary/*.nupkg \
+            ./Artifacts/* \
             --repo="$GITHUB_REPOSITORY" \
             --title="Release ${{ inputs.version }}" \
             --generate-notes

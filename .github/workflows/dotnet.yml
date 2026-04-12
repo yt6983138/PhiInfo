@@ -48,20 +48,15 @@ jobs:
         dotnet pack ./PhiInfo.CLI/PhiInfo.CLI.csproj -c Release
         dotnet pack ./PhiInfo.CLI/PhiInfo.CLI.csproj -c AsLibrary
     
-    - name: Upload PhiInfo.Core (Release) artifacts
-      uses: actions/upload-artifact@v7
-      with:
-        name: PhiInfo.Core
-        path: ./PhiInfo.Core/bin/Release/*.nupkg
+    - name: Copy to Artifacts folder
+      run: |
+        mkdir -p ./Artifacts
+        cp ./PhiInfo.Core/bin/Release/*.nupkg ./Artifacts/
+        cp ./PhiInfo.CLI/bin/Release/*.nupkg ./Artifacts/
+        cp ./PhiInfo.CLI/bin/AsLibrary/*.nupkg ./Artifacts/
 
-    - name: Upload PhiInfo.CLI (Release) artifacts
+    - name: Upload PhiInfo artifacts
       uses: actions/upload-artifact@v7
       with:
-        name: PhiInfo.CLI.Release
-        path: ./PhiInfo.CLI/bin/Release/*.nupkg
-        
-    - name: Upload PhiInfo.CLI (AsLibrary) artifacts
-      uses: actions/upload-artifact@v7
-      with:
-        name: PhiInfo.CLI.AsLibrary
-        path: ./PhiInfo.CLI/bin/AsLibrary/*.nupkg
+        name: PhiInfo
+        path: ./Artifacts/*
