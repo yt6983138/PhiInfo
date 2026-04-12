@@ -4,9 +4,16 @@ permissions:
   contents: read 
 
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "What's new about this run?"
+        required: true
+        default: 'Cooking something'
+  pull_request: # for testing pr
+
+  # push:
+  #   branches: [ "main" ]
 
 jobs:
   build:
@@ -15,66 +22,39 @@ jobs:
     steps:
     - uses: actions/checkout@v6
 
-    - name: Get short SHA
+    - name: Get short SHA # idk why is this here so i decided to not touch it
       run: echo "SHA7=$(echo ${GITHUB_SHA} | cut -c1-7)" >> $GITHUB_ENV
-        
-    - name: Setup Android Ndk
-      uses: nttld/setup-ndk@v1
-      with:
-        ndk-version: r27d
-        add-to-path: true
-        local-cache: true
 
     - name: Setup .NET
       uses: actions/setup-dotnet@v5.1.0
       with:
-        dotnet-version: "10.0"
-        cache: true
-        cache-dependency-path: ./src/PhiInfo.Android/packages.lock.json
-
-    - name: Setup Tpk
-      run: | 
-        curl -L -o tpk.zip https://nightly.link/AssetRipper/Tpk/workflows/type_tree_tpk/master/uncompressed_file.zip
-        unzip tpk.zip uncompressed.tpk
+        dotnet-version: "8.0"
 
     - name: Restore PhiInfo
       run: | 
-        dotnet workload install android
-        dotnet restore ./src/PhiInfo.CLI/PhiInfo.CLI.csproj
-        dotnet restore ./src/PhiInfo.Android/PhiInfo.Android.csproj
+        dotnet restore ./PhiInfo.Core/PhiInfo.Core.csproj
+        dotnet restore ./PhiInfo.CLI/PhiInfo.CLI.csproj
 
-    - name: Build PhiInfo.CLI
+    - name: Build PhiInfo
       run: | 
-        dotnet build ./src/PhiInfo.CLI/PhiInfo.CLI.csproj --configuration Release --no-restore -p:GitHash=$SHA7
-        cp uncompressed.tpk ./src/PhiInfo.CLI/bin/Release/net10.0/classdata.tpk
-
-    - name: Upload PhiInfo.CLI artifacts
+        dotnet pack ./PhiInfo.Core/PhiInfo.Core.csproj -c Release
+        dotnet pack ./PhiInfo.CLI/PhiInfo.CLI.csproj -c Release
+        dotnet pack ./PhiInfo.CLI/PhiInfo.CLI.csproj -c AsLibrary
+    
+    - name: Upload PhiInfo.Core (Release) artifacts
       uses: actions/upload-artifact@v7
       with:
-        name: PhiInfo.CLI
-        path: ./src/PhiInfo.CLI/bin/Release/net10.0/**
+        name: PhiInfo.Core
+        path: ./PhiInfo.Core/bin/Release/*.nupkg
 
-    - name: Publish PhiInfo.CLI-Android
-      run: | 
-        dotnet publish ./src/PhiInfo.CLI/PhiInfo.CLI.csproj --configuration Release -r linux-bionic-arm64 -p:GitHash=$SHA7
-        cp uncompressed.tpk ./src/PhiInfo.CLI/bin/Release/net10.0/linux-bionic-arm64/publish/classdata.tpk
-
-    - name: Upload PhiInfo.CLI-Android
+    - name: Upload PhiInfo.CLI (Release) artifacts
       uses: actions/upload-artifact@v7
       with:
-        name: PhiInfo.CLI-Android
-        path: ./src/PhiInfo.CLI/bin/Release/net10.0/linux-bionic-arm64/publish/**
-
-    - name: Publish PhiInfo.Android
-      run: |
-        mkdir -p ./src/PhiInfo.Android/Assets/
-        cp uncompressed.tpk ./src/PhiInfo.Android/Assets/classdata.tpk
-        dotnet publish ./src/PhiInfo.Android/PhiInfo.Android.csproj --configuration Release -r android-arm64 -p:GitHash=$SHA7
-
-    - name: Upload PhiInfo.Android
+        name: PhiInfo.CLI.Release
+        path: ./PhiInfo.CLI/bin/Release/*.nupkg
+        
+    - name: Upload PhiInfo.CLI (AsLibrary) artifacts
       uses: actions/upload-artifact@v7
       with:
-        archive: false
-        path: ./src/PhiInfo.Android/bin/Release/net10.0-android/android-arm64/publish/dev.phigros_labs.PhiInfo-Signed.apk
-
-   
+        name: PhiInfo.CLI.AsLibrary
+        path: ./PhiInfo.CLI/bin/AsLibrary/*.nupkg
