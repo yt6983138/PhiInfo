@@ -11,23 +11,50 @@ on:
         required: true
         default: 'v0.0.0'
 
-jobs:
-  build_packages:
-    uses: ./.github/workflows/dotnet.yml
+jobs: # i gave up so i just copied the build job
   release:
-    needs: build_packages
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v6
+
+      - name: Get short SHA # idk why is this here so i decided to not touch it
+        run: echo "SHA7=$(echo ${GITHUB_SHA} | cut -c1-7)" >> $GITHUB_ENV
+      
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5.1.0
+        with:
+          dotnet-version: "8.0"
+      
+      - name: Restore PhiInfo
+        run: | 
+          dotnet restore ./PhiInfo.Core/PhiInfo.Core.csproj
+          dotnet restore ./PhiInfo.CLI/PhiInfo.CLI.csproj
+      
+      - name: Build PhiInfo
+        run: | 
+          dotnet build ./PhiInfo.Core/PhiInfo.Core.csproj -c Release
+          dotnet build ./PhiInfo.CLI/PhiInfo.CLI.csproj -c Release
+          dotnet build ./PhiInfo.CLI/PhiInfo.CLI.csproj -c AsLibrary
+      
+      - name: Pack PhiInfo
+        run: | 
+          dotnet pack ./PhiInfo.Core/PhiInfo.Core.csproj -c Release
+          dotnet pack ./PhiInfo.CLI/PhiInfo.CLI.csproj -c Release
+          dotnet pack ./PhiInfo.CLI/PhiInfo.CLI.csproj -c AsLibrary
+      
+      - name: Copy to Artifacts folder
+        run: |
+          mkdir -p /tmp/Artifacts
+          cp ./PhiInfo.Core/bin/Release/*.nupkg /tmp/Artifacts/
+          cp ./PhiInfo.CLI/bin/Release/*.nupkg /tmp/Artifacts/
+          cp ./PhiInfo.CLI/bin/AsLibrary/*.nupkg /tmp/Artifacts/
+
       - name: Create Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.ref_name }}
         run: |
-          ls -al /tmp
-          ls -al /tmp/Artifacts/
           gh release create "${{ inputs.version }}" \
             /tmp/Artifacts/* \
             --title="Release ${{ inputs.version }}" \
             --generate-notes
-      - name: Cleanup
-        run: rm -rf /tmp/Artifacts/
