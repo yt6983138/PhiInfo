@@ -61,11 +61,11 @@ More detail can be found in the CLI help message.
 ## Developers: Get started
 AI generated wiki: [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/yt6983138/PhiInfo)
 ### Installation
-Currently, there is no nuget package as the original author does not want to
+Currently, there is no online nuget package as the original author does not want to
 upload to nuget gallery due to the nature of this project being a gray-area one. 
 
-Which means, you can only reference this project by using `git submodule` or 
-by maintaining your own package on other nuget servers.
+Which means, you can only reference this project by using `git submodule` or grab
+one in the releases page.
 ### Info extraction
 Use `InfoExtractor` to extract informations. 
 
