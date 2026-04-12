@@ -34,8 +34,14 @@ jobs:
       run: | 
         dotnet restore ./PhiInfo.Core/PhiInfo.Core.csproj
         dotnet restore ./PhiInfo.CLI/PhiInfo.CLI.csproj
-
+    
     - name: Build PhiInfo
+      run: | 
+        dotnet build ./PhiInfo.Core/PhiInfo.Core.csproj -c Release
+        dotnet build ./PhiInfo.CLI/PhiInfo.CLI.csproj -c Release
+        dotnet build ./PhiInfo.CLI/PhiInfo.CLI.csproj -c AsLibrary
+
+    - name: Pack PhiInfo
       run: | 
         dotnet pack ./PhiInfo.Core/PhiInfo.Core.csproj -c Release
         dotnet pack ./PhiInfo.CLI/PhiInfo.CLI.csproj -c Release
