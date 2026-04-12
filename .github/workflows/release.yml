@@ -23,6 +23,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.ref_name }}
         run: |
+          ls -al
+          ls -al ./Artifacts/
           gh release create "${{ inputs.version }}" \
             ./Artifacts/* \
             --repo="$GITHUB_REPOSITORY" \
