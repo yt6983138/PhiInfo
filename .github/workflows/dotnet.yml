@@ -11,6 +11,7 @@ on:
         required: true
         default: 'Cooking something'
   pull_request: # for testing pr
+  workflow_call:
 
   # push:
   #   branches: [ "main" ]

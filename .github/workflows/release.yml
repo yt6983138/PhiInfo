@@ -1,0 +1,32 @@
+name: Create Release
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "What's new about this release?"
+        required: true
+        default: 'Cooked something'
+      version:
+        description: "What's the version of this release?"
+        required: true
+        default: 'v0.0.0'
+
+jobs:
+  build_packages:
+    uses: ./.github/workflows/dotnet.yml
+  release:
+    needs: build_packages
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "${{ inputs.version }}" \
+            ./PhiInfo.Core/bin/Release/*.nupkg \
+            ./PhiInfo.CLI/bin/Release/*.nupkg \
+            ./PhiInfo.CLI/bin/AsLibrary/*.nupkg \
+            --repo="$GITHUB_REPOSITORY" \
+            --title="Release ${{ inputs.version }}" \
+            --generate-notes
