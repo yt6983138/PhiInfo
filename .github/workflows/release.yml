@@ -23,11 +23,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.ref_name }}
         run: |
-          ls -al
-          ls -al ./Artifacts/
+          ls -al /tmp
+          ls -al /tmp/Artifacts/
           gh release create "${{ inputs.version }}" \
-            ./Artifacts/* \
+            /tmp/Artifacts/* \
             --title="Release ${{ inputs.version }}" \
             --generate-notes
       - name: Cleanup
-        run: rm -rf ./Artifacts/
+        run: rm -rf /tmp/Artifacts/

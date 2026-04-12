@@ -22,8 +22,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v6
-      with:
-        clean: false
 
     - name: Get short SHA # idk why is this here so i decided to not touch it
       run: echo "SHA7=$(echo ${GITHUB_SHA} | cut -c1-7)" >> $GITHUB_ENV
@@ -52,13 +50,13 @@ jobs:
     
     - name: Copy to Artifacts folder
       run: |
-        mkdir -p ./Artifacts
-        cp ./PhiInfo.Core/bin/Release/*.nupkg ./Artifacts/
-        cp ./PhiInfo.CLI/bin/Release/*.nupkg ./Artifacts/
-        cp ./PhiInfo.CLI/bin/AsLibrary/*.nupkg ./Artifacts/
+        mkdir -p /tmp/Artifacts
+        cp ./PhiInfo.Core/bin/Release/*.nupkg /tmp/Artifacts/
+        cp ./PhiInfo.CLI/bin/Release/*.nupkg /tmp/Artifacts/
+        cp ./PhiInfo.CLI/bin/AsLibrary/*.nupkg /tmp/Artifacts/
 
     - name: Upload PhiInfo artifacts
       uses: actions/upload-artifact@v7
       with:
         name: PhiInfo
-        path: ./Artifacts/*
+        path: /tmp/Artifacts/*
