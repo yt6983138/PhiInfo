@@ -1,10 +1,17 @@
 # PhiInfo
-*This is forked from [here](https://github.com/PhigrosLabs/PhiInfo), and 
-has been modified for asset extraction for 
-[PSLDiscordBot](https://github.com/yt6983138/PSLDiscordBot). Readme has been translated, 
-and code have been refactored/trimmed.*
+Originally based on [PhigrosLabs/PhiInfo](https://github.com/PhigrosLabs/PhiInfo), now developed
+independently.
 
-Phigros asset extraction implemented using `AssetsTools.NET`.
+Major changes compared to the original:
+1. Added documentations in English, and XML documentations to API
+2. Made IO related api async
+3. Added helper and default (common) implementations to reduce boilerplate codes
+4. Has less abstraction, making the code easier to understand and wire up (similar effect can be done by using raw constructors)
+5. Tests, although very simple and barebone
+6. `dotnet tool` support, more options for CLI, and Phigros_Resource compatible output format
+7. No default http server implementation, and no Android, AOT support
+8. Downgraded to .net 8 and removed .net standard 2 support
+9. No HTTP streaming - The original implementation can be incredibly slow if you locate outside China due to GFW and latency
 
 ## Supported functionalities
 ### Informations
@@ -22,6 +29,7 @@ Phigros asset extraction implemented using `AssetsTools.NET`.
 Features:
 1. Async api for apis involving I/O operations
 2. Development-friendly typed models for extracted informations
+3. Added helper and default (common) implementations to reduce boilerplate codes
 ### CLI
 Features: 
 1. Ultra-fast extraction with concurrency (All assets in 22.9 seconds on my PC)
@@ -83,7 +91,12 @@ Example code:
 using Stream apk = File.OpenRead("com.PigeonGames.Phigros.apk");
 using Stream obb = File.OpenRead("main.obb");
 using Stream classDataTpk = File.OpenRead("classdata.tpk");
-  
+
+// The internal LibCpp2Il output to console directly. If you want to
+// suppress them or redirect them, uncomment following lines
+// LibLogger.Writer = new QuietLogWriter();
+// LibLogger.Writer = new StreamLogWriter(<your stream here>);
+
 // Construct the extractor from static factory method,
 // please do not construct the extractor multiple times, 
 // check the constructor documentation for details.
