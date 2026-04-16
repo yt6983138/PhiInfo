@@ -17,7 +17,7 @@ public delegate Task<Stream> BundleStreamFactory(string path, CancellationToken 
 /// <summary>
 /// Extractor for addressable asset bundles. Only supports Texture2D, AudioClip and TextAsset.
 /// </summary>
-public class AddressableBundleExtractor
+public class AddressableBundleExtractor : IDisposable
 {
 	private record struct MappedAssetBundle(AssetBundleFile BundleFile, AssetsFile InfoAssetFile) : IDisposable
 	{
@@ -30,6 +30,7 @@ public class AddressableBundleExtractor
 
 	private readonly CatalogParser _catalogParser;
 	private readonly BundleStreamFactory _bundleStreamFactory;
+	private readonly Action? _bundleStreamDisposer;
 
 	/// <summary>
 	/// Creates an instance of this class with a <see cref="CatalogParser"/> and a <see cref="BundleStreamFactory"/>. 
@@ -39,14 +40,16 @@ public class AddressableBundleExtractor
 	/// </summary>
 	/// <param name="catalogParser">A catalog parser.</param>
 	/// <param name="bundleStreamFactory">A bundle stream factory.</param>
-	public AddressableBundleExtractor(CatalogParser catalogParser, BundleStreamFactory bundleStreamFactory)
+	/// <param name="bundleStreamDisposer">A custom dispose action for the bundle stream factory.</param>
+	public AddressableBundleExtractor(CatalogParser catalogParser, BundleStreamFactory bundleStreamFactory, Action? bundleStreamDisposer = null)
 	{
 		this._catalogParser = catalogParser;
 		this._bundleStreamFactory = bundleStreamFactory;
+		this._bundleStreamDisposer = bundleStreamDisposer;
 	}
 
 	/// <summary>
-	/// Please see <see cref="AddressableBundleExtractor(CatalogParser, BundleStreamFactory)"/> for
+	/// Please see <see cref="AddressableBundleExtractor(CatalogParser, BundleStreamFactory, Action)"/> for
 	/// more information.
 	/// 
 	/// If you are using merged apk file (like from TapTap), supplying arguments using apk is also accepted.
@@ -59,7 +62,8 @@ public class AddressableBundleExtractor
 	public static async Task<AddressableBundleExtractor> FromObbAsync(Stream obb, Stream? auxObb = null, CancellationToken ct = default)
 	{
 		CatalogParser catalogParser = await CatalogParser.FromObbAsync(obb, ct);
-		return new(catalogParser, PhigrosAssetHelper.CreateBundleFactoryFromObb(obb, auxObb));
+		(BundleStreamFactory? factory, Action? disposer) = PhigrosAssetHelper.CreateBundleFactoryFromObb(obb, auxObb);
+		return new(catalogParser, factory, disposer);
 	}
 
 	private static async Task<byte[]> ReadAbsolutePositionRangeAsync(Stream baseStream, long offset, int size, CancellationToken ct = default)
@@ -78,6 +82,13 @@ public class AddressableBundleExtractor
 		}
 
 		return buffer;
+	}
+
+	/// <inheritdoc/>
+	public void Dispose()
+	{
+		GC.SuppressFinalize(this);
+		this._bundleStreamDisposer?.Invoke();
 	}
 
 	private async Task<MappedAssetBundle> FindAddressableByCatalogPathAsync(string path, CancellationToken ct = default)
