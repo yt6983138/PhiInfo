@@ -29,13 +29,6 @@ public class StreamLogWriter : LogWriter, IDisposable
 		this.Stream = stream;
 		this.Encoding = encoding;
 	}
-	/// <summary>
-	/// Finalizes this log writer by disposing it. This will dispose the stream as well.
-	/// </summary>
-	~StreamLogWriter()
-	{
-		this.Dispose();
-	}
 
 	private void Write(string message)
 	{

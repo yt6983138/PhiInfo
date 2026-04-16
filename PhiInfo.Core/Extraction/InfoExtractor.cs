@@ -82,13 +82,6 @@ public class InfoExtractor : IDisposable
 			classDataTPK
 		);
 	}
-	/// <summary>
-	/// Finalizes this instance. Disposes this instance as well.
-	/// </summary>
-	~InfoExtractor()
-	{
-		this.Dispose();
-	}
 
 	private static Il2CppFieldDefinition GetFieldInConstantsClass(string fieldName)
 	{

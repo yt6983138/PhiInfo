@@ -54,13 +54,6 @@ public class MonoBehaviourFinder : IDisposable
 		this._templateGenerator.SetUnityVersion(new UnityVersion(this._globalGameManagers.Metadata.UnityVersion));
 		this._templateGenerator.InitializeCpp2IL();
 	}
-	/// <summary>
-	/// Finalizes this instance and dispose all resources.
-	/// </summary>
-	~MonoBehaviourFinder()
-	{
-		this.Dispose();
-	}
 
 	/// <inheritdoc/>
 	public void Dispose()
