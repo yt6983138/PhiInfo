@@ -7,7 +7,7 @@ public class CLITest
 	public void Information()
 	{
 		Helper.EnsureWorkingDirectory();
-		Assert.AreEqual(0, CLI.Program.Main([
+		Assert.AreEqual(0, CLI.CLI.Main([
 			"--apk", Helper.TestApkPath,
 			"--obb", Helper.TestObbPath,
 			"--classdata", Helper.TestClassDataTPKPath,
@@ -18,14 +18,14 @@ public class CLITest
 	public void InformationAuto()
 	{
 		Helper.EnsureWorkingDirectory();
-		Assert.AreEqual(0, CLI.Program.Main([
+		Assert.AreEqual(0, CLI.CLI.Main([
 			"--download-apk", "TAPTAP",
 			"--download-classdata", "AUTO",
 			"--apk", Helper.TestApkPath + ".tmp",
 			"--obb", Helper.TestObbPath + ".tmp",
 			"--classdata", Helper.TestClassDataTPKPath + ".tmp",
 			"--extract-info-to", "./TestData/ExtractedInfoAuto",
-			"--language", "English"]));
+			"--language", "EnglishUS"]));
 	}
 	[TestMethod]
 	public void Asset()
@@ -45,6 +45,6 @@ public class CLITest
 			args.AddRange(["--aux-obb", Helper.TestAuxObbPath]);
 		}
 
-		Assert.AreEqual(0, CLI.Program.Main(args.ToArray()));
+		Assert.AreEqual(0, CLI.CLI.Main(args.ToArray()));
 	}
 }

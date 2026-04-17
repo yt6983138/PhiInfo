@@ -1,4 +1,9 @@
-﻿namespace PhiInfo.CLI;
+﻿using CsvHelper;
+using CsvHelper.Configuration;
+using System.Globalization;
+using System.Text;
+
+namespace PhiInfo.CLI;
 internal static class Helper
 {
 	internal static T EnsureNotNull<T>(this T? value, string? paramName = null) where T : class
@@ -35,5 +40,24 @@ internal static class Helper
 			Directory.CreateDirectory(outputPath);
 		}
 		return outputPath;
+	}
+
+	extension(CsvWriter self)
+	{
+		public static CsvWriter FromStringBuilder(StringBuilder sb, string delimiter)
+		{
+			CsvConfiguration config = new(CultureInfo.InvariantCulture)
+			{
+				Delimiter = delimiter
+			};
+			return new CsvWriter(new StringWriter(sb), config);
+		}
+		public void WriteFields(params IEnumerable<string> strings)
+		{
+			foreach (string item in strings)
+			{
+				self.WriteField(item);
+			}
+		}
 	}
 }
