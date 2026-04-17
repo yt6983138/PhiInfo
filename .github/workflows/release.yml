@@ -9,13 +9,17 @@ on:
       version:
         description: "What's the version of this release?"
         required: true
-        default: 'v0.0.0'
+        default: 'CLI v0.0.0; Core v0.0.0'
 
 jobs: # i gave up so i just copied the build job
   release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+  
+      - name: Get current date
+        id: date
+        run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
 
       - name: Get short SHA # idk why is this here so i decided to not touch it
         run: echo "SHA7=$(echo ${GITHUB_SHA} | cut -c1-7)" >> $GITHUB_ENV
@@ -54,7 +58,7 @@ jobs: # i gave up so i just copied the build job
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.ref_name }}
         run: |
-          gh release create "${{ inputs.version }}" \
+          gh release create "${{ steps.date.outputs.date }}" \
             /tmp/Artifacts/* \
             --title="Release ${{ inputs.version }}" \
             --generate-notes
