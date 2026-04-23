@@ -109,7 +109,13 @@ public class CLIExtractor
 		this._logger.LogInformation("Extracting Chapters...");
 		List<ChapterInfo> chapters = infoExtractor.ExtractChapters();
 
-		return new(songInfo, avatars, chapters);
+		return new(
+			songInfo,
+			avatars,
+			chapters,
+			infoExtractor.GetVersionString(),
+			infoExtractor.GetVersionInteger(),
+			infoExtractor.GetIsInternational());
 	}
 	public Dictionary<string, string> BuildPhigrosResourceCompatibleOutput(NonMultiLanguageInfos nonMultiLangInfo, MultiLanguageInfos multiLangInfo)
 	{
