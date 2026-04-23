@@ -5,7 +5,7 @@
 		<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<LangVersion>preview</LangVersion>
-		<AssemblyVersion>2.0.0</AssemblyVersion>
+		<AssemblyVersion>2.0.1</AssemblyVersion>
 		
 		<Version>$(AssemblyVersion)</Version>
 		<Authors>yt6983138,Shua-github</Authors>
