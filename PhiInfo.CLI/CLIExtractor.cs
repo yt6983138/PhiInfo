@@ -13,7 +13,6 @@ public class CLIExtractor
 {
 	public const Language AllLanguage = unchecked((Language)0xFFFFFFFF);
 
-	private readonly List<Avatar>? _preExtractedAvatar;
 	private readonly ILogger<CLIExtractor> _logger;
 
 	public InfoExtractor? InfoExtractor { get; }
@@ -37,10 +36,6 @@ public class CLIExtractor
 		this.AddressableBundleExtractor = addressableBundleExtractor;
 		this.ExtractOptions = extractOptions;
 		this._logger = logger;
-
-		// i feel like i shouldnt be doing this in constructor, and do this when the avatarMap is actually needed
-		// TODO: ^
-		this._preExtractedAvatar = infoExtractor?.ExtractAvatars();
 	}
 
 	public static async Task<CLIExtractor> FromOptionAsync(ExtractOptions option, ILogger<CLIExtractor> logger)
@@ -214,13 +209,15 @@ public class CLIExtractor
 	public AssetExtractionContext CreateAssetExtractionContext(ExtractedFileHandler handler)
 	{
 		AddressableBundleExtractor addressableBundleExtractor = this.RequireAddressableBundleExtractor();
-		if (this._preExtractedAvatar is null)
+
+		List<Avatar>? avatars = this.InfoExtractor?.ExtractAvatars();
+		if (avatars is null)
 		{
 			this._logger.LogWarning("Pre-extracted avatar list is not available because of missing apk or class data file.");
 		}
 		return new AssetExtractionContext(
 			addressableBundleExtractor,
-			this.InfoExtractor?.ExtractAvatars(),
+			avatars,
 			this._logger,
 			this.ExtractOptions,
 			handler);
