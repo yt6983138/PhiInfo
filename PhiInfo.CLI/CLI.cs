@@ -15,6 +15,8 @@ public class CLI
 {
 	public const Language AllLanguage = unchecked((Language)0xFFFFFFFF);
 
+	// for some reason microsoft decided to make UTF8Encoding emit BOM by default, which is really annoying since some software are failing because of the bom
+	public static readonly UTF8Encoding UTF8WithoutBOM = new(false);
 	public static readonly JsonSerializerOptions JsonOptions = new()
 	{
 		PropertyNamingPolicy = null,
@@ -307,7 +309,7 @@ public class CLI
 		await File.WriteAllTextAsync(
 			Path.Combine(extractInfoTo.FullName, "info.json"),
 			JsonSerializer.Serialize(nonMultiLangInfo, JsonOptions),
-			Encoding.UTF8);
+			UTF8WithoutBOM);
 
 		// required for PhigrosLibrary_Resource compatible format, which does not support multiple language
 		MultiLanguageInfos multiLangInfo;
@@ -320,7 +322,7 @@ public class CLI
 				await File.WriteAllTextAsync(
 					Path.Combine(extractInfoTo.FullName, $"tipsAndCollections_{lang}.json"),
 					JsonSerializer.Serialize(langInfo, JsonOptions),
-					Encoding.UTF8);
+					UTF8WithoutBOM);
 			}
 			multiLangInfo = this.Extractor.ExtractLanguageSpecificInfo(Language.EnglishUS);
 		}
@@ -331,7 +333,7 @@ public class CLI
 			await File.WriteAllTextAsync(
 					Path.Combine(extractInfoTo.FullName, $"tipsAndCollections_{language}.json"),
 					JsonSerializer.Serialize(multiLangInfo, JsonOptions),
-					Encoding.UTF8);
+					UTF8WithoutBOM);
 		}
 
 		// PhigrosLibrary_Resource compatible format
@@ -339,7 +341,7 @@ public class CLI
 		foreach (KeyValuePair<string, string> item in compatibleOutput)
 		{
 			this._logger.LogInformation("Writing Phigros_Resource compatible output {file}...", item.Key);
-			File.WriteAllText(Path.Combine(extractInfoTo.FullName, item.Key), item.Value, Encoding.UTF8);
+			File.WriteAllText(Path.Combine(extractInfoTo.FullName, item.Key), item.Value, UTF8WithoutBOM);
 		}
 	}
 	public async Task ExtractAssetsToDirectory(DirectoryInfo extractAssetTo)
@@ -355,7 +357,7 @@ public class CLI
 		await File.WriteAllTextAsync(
 				Path.Combine(extractAssetTo.FullName, AssetExtractionContext.AvatarBasePath, "AvatarInfo.json"),
 				JsonSerializer.Serialize(avatarMap, JsonOptions),
-				Encoding.UTF8);
+				UTF8WithoutBOM);
 
 		async Task HandleFile(string path, Stream stream)
 		{

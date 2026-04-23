@@ -9,7 +9,6 @@ using SixLabors.ImageSharp.Formats.Png;
 using System.Collections.Concurrent;
 using System.Collections.Frozen;
 using System.Security.Cryptography;
-using System.Text;
 
 namespace PhiInfo.CLI;
 
@@ -193,7 +192,7 @@ public class AssetExtractionContext
 		UnityText text = await this._addressableBundleExtractor.GetTextRawAsync(path);
 
 		using Stream stream = _memoryStreamManager.GetStream(path);
-		using StreamWriter streamWriter = new(stream, Encoding.UTF8, leaveOpen: true);
+		using StreamWriter streamWriter = new(stream, CLI.UTF8WithoutBOM, leaveOpen: true);
 		{
 			await streamWriter.WriteAsync(text.Content);
 		}
