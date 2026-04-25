@@ -1,5 +1,4 @@
 ﻿using PhigrosLibraryCSharp;
-using PhiInfo.Core.Catalog;
 using PhiInfo.Core.Models.Catalog;
 using System.Collections.Frozen;
 using System.Text;
@@ -70,7 +69,7 @@ public class CatalogParser
 	/// <exception cref="ArgumentException">Thrown when the JSON is invalid or missing required fields.</exception>
 	public static async Task<CatalogParser> FromJsonAsync(Stream json, CancellationToken ct = default)
 	{
-		RawCatalogModel? data = await JsonSerializer.DeserializeAsync(json, CatalogModelJsonContext.Default.RawCatalogModel, ct)
+		RawCatalogModel? data = await JsonSerializer.DeserializeAsync<RawCatalogModel>(json, cancellationToken: ct)
 			?? throw new ArgumentException("Invalid json supplied.", nameof(json));
 
 		return FromBase64Strings(data.KeyDataString, data.BucketDataString, data.EntryDataString);
