@@ -29,10 +29,8 @@ public class AssetExtractionContext
 	private readonly ExtractedFileHandler _extractedFileHandler;
 	private readonly FrozenDictionary<string, string> _avatarReverseLookupMap;
 
-	private readonly ConcurrentQueue<Task> _processingQueue = new();
-
 	public volatile bool HasQueuedAll = false;
-
+	public ConcurrentQueue<Task> ProcessingQueue { get; } = new();
 	public Dictionary<string, string> AvatarMap { get; set; } = [];
 
 	public AssetExtractionContext(
@@ -59,9 +57,9 @@ public class AssetExtractionContext
 
 	private async Task Dequeue()
 	{
-		while (!this.HasQueuedAll || !this._processingQueue.IsEmpty)
+		while (!this.HasQueuedAll || !this.ProcessingQueue.IsEmpty)
 		{
-			if (this._processingQueue.TryDequeue(out Task? task))
+			if (this.ProcessingQueue.TryDequeue(out Task? task))
 			{
 				await task.ContinueWith(t =>
 				{
@@ -99,7 +97,7 @@ public class AssetExtractionContext
 		Task dequeueTask = this.StartDequeue();
 		foreach (string item in this._addressableBundleExtractor.ListMeaningfulAssetPathsInCatalog())
 		{
-			this._processingQueue.Enqueue(Task.Run(() => this.ExtractAsset(item)));
+			this.ProcessingQueue.Enqueue(Task.Run(() => this.ExtractAsset(item)));
 		}
 		this.HasQueuedAll = true;
 		await dequeueTask;
