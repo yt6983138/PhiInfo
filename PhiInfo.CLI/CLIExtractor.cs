@@ -9,17 +9,37 @@ using System.Text;
 
 namespace PhiInfo.CLI;
 
+/// <summary>
+/// Convenience wrapper for CLI extraction. This can be used outside CLI scenarios.
+/// </summary>
 public class CLIExtractor
 {
-	public const Language AllLanguage = unchecked((Language)0xFFFFFFFF);
-
 	private readonly ILogger<CLIExtractor> _logger;
 
+	/// <summary>
+	/// The info extractor. May be null if the necessary files for info extraction are not provided.
+	/// </summary>
 	public InfoExtractor? InfoExtractor { get; }
+	/// <summary>
+	/// The addressable bundle extractor. May be null if the necessary files for extraction are not provided.
+	/// </summary>
 	public AddressableBundleExtractor? AddressableBundleExtractor { get; }
+	/// <summary>
+	/// The original extraction options.
+	/// </summary>
 	public ExtractOptions ExtractOptions { get; }
 
 	#region Constructor and Factory
+	/// <summary>
+	/// Create a <see cref="CLIExtractor"/> with the provided extractors and options. At least one of the extractors must be non-null.
+	/// You can use <see cref="FromOptionAsync"/> to create a <see cref="CLIExtractor"/> from extraction options, which will 
+	/// automatically determine the necessary extractors based on the provided files (and is more convenient).
+	/// </summary>
+	/// <param name="infoExtractor">The info extractor. May be null if the necessary files for info extraction are not provided.</param>
+	/// <param name="addressableBundleExtractor">The addressable bundle extractor. May be null if the necessary files for extraction are not provided.</param>
+	/// <param name="extractOptions">The extraction options.</param>
+	/// <param name="logger">The logger.</param>
+	/// <exception cref="ArgumentException">Thrown if both <paramref name="addressableBundleExtractor"/> and <paramref name="infoExtractor"/> are null.</exception>
 	public CLIExtractor(
 		InfoExtractor? infoExtractor,
 		AddressableBundleExtractor? addressableBundleExtractor,
@@ -38,6 +58,13 @@ public class CLIExtractor
 		this._logger = logger;
 	}
 
+	/// <summary>
+	/// Create a <see cref="CLIExtractor"/> from the provided extraction options. 
+	/// The necessary extractors will be automatically created based on the provided files in the options.
+	/// </summary>
+	/// <param name="option">The extraction options.</param>
+	/// <param name="logger">The logger.</param>
+	/// <returns>A task that represents the asynchronous operation. The task result contains the created <see cref="CLIExtractor"/>.</returns>
 	public static async Task<CLIExtractor> FromOptionAsync(ExtractOptions option, ILogger<CLIExtractor> logger)
 	{
 		InfoExtractor? infoExtractor = null;
@@ -79,6 +106,12 @@ public class CLIExtractor
 	#endregion
 
 	#region Information Extraction
+	/// <summary>
+	/// Extract language specific information.
+	/// Note: this does not accept <see cref="CLI.AllLanguage"/>.
+	/// </summary>
+	/// <param name="lang">The language to extract information for.</param>
+	/// <returns>The extracted language specific information.</returns>
 	public MultiLanguageInfos ExtractLanguageSpecificInfo(Language lang)
 	{
 		InfoExtractor infoExtractor = this.RequireInfoExtractor();
@@ -98,6 +131,10 @@ public class CLIExtractor
 		this._logger.LogInformation("Extracting Tips in {lang}...", lang);
 		return new(collections, infoExtractor.ExtractTips());
 	}
+	/// <summary>
+	/// Extract non-language specific information.
+	/// </summary>
+	/// <returns>The extracted non-language specific information.</returns>
 	public NonMultiLanguageInfos ExtractNonLanguageSpecificInfo()
 	{
 		InfoExtractor infoExtractor = this.RequireInfoExtractor();
@@ -117,6 +154,14 @@ public class CLIExtractor
 			infoExtractor.GetVersionInteger(),
 			infoExtractor.GetIsInternational());
 	}
+
+	/// <summary>
+	/// Convert the extracted information into a format compatible with applications based on Phigros_Resource. 
+	/// The output is a dictionary where the key is the file name and the value is the file content.
+	/// </summary>
+	/// <param name="nonMultiLangInfo">The non-language specific information.</param>
+	/// <param name="multiLangInfo">The language specific information.</param>
+	/// <returns>A dictionary where the key is the file name and the value is the file content.</returns>
 	public Dictionary<string, string> BuildPhigrosResourceCompatibleOutput(NonMultiLanguageInfos nonMultiLangInfo, MultiLanguageInfos multiLangInfo)
 	{
 		Dictionary<string, string> output = [];
@@ -212,6 +257,12 @@ public class CLIExtractor
 	#endregion
 
 	#region Asset Extraction
+	/// <summary>
+	/// Create an <see cref="AssetExtractionContext"/> for asset extraction. 
+	/// This requires an <see cref="AddressableBundleExtractor"/> to be available, and will use <see cref="InfoExtractor"/> if available to create avatar name to hash map.
+	/// </summary>
+	/// <param name="handler">File handler to decide where is it extracted.</param>
+	/// <returns>The created <see cref="AssetExtractionContext"/>.</returns>
 	public AssetExtractionContext CreateAssetExtractionContext(ExtractedFileHandler handler)
 	{
 		AddressableBundleExtractor addressableBundleExtractor = this.RequireAddressableBundleExtractor();

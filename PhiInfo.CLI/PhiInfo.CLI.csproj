@@ -6,6 +6,7 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<LangVersion>preview</LangVersion>
 		<AssemblyVersion>2.0.1</AssemblyVersion>
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
 		
 		<Version>$(AssemblyVersion)</Version>
 		<Authors>yt6983138,Shua-github</Authors>

@@ -11,12 +11,28 @@ using System.Text.Json.Serialization;
 
 namespace PhiInfo.CLI;
 
+/// <summary>
+/// Provides static methods for downloading APK and class data, as well as instance methods for extracting information and assets to specified directories.
+/// This is also the entry point of the program.
+/// </summary>
 public class CLI
 {
+	/// <summary>
+	/// All language identifier for CLI parsing and extraction. 
+	/// This is not a real language enum value and should not be used in other contexts.
+	/// Passing to <see cref="Core.Extraction.InfoExtractor"/> will cause errors.
+	/// </summary>
 	public const Language AllLanguage = unchecked((Language)0xFFFFFFFF);
 
-	// for some reason microsoft decided to make UTF8Encoding emit BOM by default, which is really annoying since some software are failing because of the bom
+	/// <summary>
+	/// For some reason microsoft decided to make <see cref="UTF8Encoding"/> emit BOM by default, 
+	/// which is really annoying since some software are failing because of the bom.
+	/// </summary>
 	public static readonly UTF8Encoding UTF8WithoutBOM = new(false);
+	/// <summary>
+	/// Default serializer options for writing json related to Phigros information.
+	/// Intended to be used in downstream applications to ensure consistency.
+	/// </summary>
 	public static readonly JsonSerializerOptions JsonOptions = new()
 	{
 		PropertyNamingPolicy = null,
@@ -28,6 +44,7 @@ public class CLI
 		}
 	};
 
+	#region CLI parsing
 	#region Arguments
 	private static readonly Option<string> DownloadApkOption = new("--download-apk")
 	{
@@ -152,6 +169,11 @@ public class CLI
 	];
 	#endregion
 
+	/// <summary>
+	/// The program entry point.
+	/// </summary>
+	/// <param name="args">CLI arguments.</param>
+	/// <returns>The exit code.</returns>
 	public static int Main(string[] args)
 	{
 #pragma warning disable IDE0028 // Simplify collection initialization
@@ -239,17 +261,34 @@ public class CLI
 			await core.ExtractAssetsToDirectory(extractAssetTo);
 		}
 	}
+	#endregion
 
 	private readonly ILogger<CLI> _logger;
 
+	/// <summary>
+	/// Extractor for CLI extraction.
+	/// </summary>
 	public CLIExtractor Extractor { get; set; }
 
+	/// <summary>
+	/// Construct a new <see cref="CLI"/> instance with the specified extractor and logger.
+	/// </summary>
+	/// <param name="extractor">The extractor to use for CLI extraction.</param>
+	/// <param name="logger">The logger to use for logging.</param>
 	public CLI(CLIExtractor extractor, ILogger<CLI> logger)
 	{
 		this.Extractor = extractor;
 		this._logger = logger;
 	}
 
+	/// <summary>
+	/// Download Phigros APK from the specified source. 
+	/// If the source is "TAPTAP", the latest APK URL will be fetched from TapTap.
+	/// </summary>
+	/// <param name="source">The source from which to download the APK.</param>
+	/// <param name="destination">The destination file for the downloaded APK.</param>
+	/// <param name="logger">The logger to use for logging.</param>
+	/// <returns>The downloaded APK file info. This will return <paramref name="destination"/> if specified, otherwise a temporary file.</returns>
 	public static async Task<FileInfo> DownloadApk(string source, FileInfo? destination, ILogger<CLI> logger)
 	{
 		using HttpClient client = new();
@@ -272,6 +311,14 @@ public class CLI
 
 		return destination;
 	}
+	/// <summary>
+	/// Download classdata.tpk from the specified source.
+	/// If the source is "AUTO", the latest classdata.tpk will be fetched from the GitHub repository of AssetRipper/Tpk.
+	/// </summary>
+	/// <param name="source">The source from which to download the classdata.tpk.</param>
+	/// <param name="destination">The destination file for the downloaded classdata.tpk.</param>
+	/// <param name="logger">The logger to use for logging.</param>
+	/// <returns>The downloaded classdata.tpk file info. This will return <paramref name="destination"/> if specified, otherwise a temporary file.</returns>
 	public static async Task<FileInfo> DownloadClassData(string source, FileInfo? destination, ILogger<CLI> logger)
 	{
 		using HttpClient client = new();
@@ -299,6 +346,13 @@ public class CLI
 		return destination;
 	}
 
+	/// <summary>
+	/// Extract Phigros information to the specified directory.
+	/// This method accepts <see cref="AllLanguage"/> as a special language parameter to extract all languages.
+	/// </summary>
+	/// <param name="extractInfoTo">Directory to extract info in.</param>
+	/// <param name="language">The language to extract information for. Use <see cref="AllLanguage"/> to extract all languages.</param>
+	/// <returns>A task representing the asynchronous operation.</returns>
 	public async Task ExtractInfoToDirectory(DirectoryInfo extractInfoTo, Language language)
 	{
 		extractInfoTo.FullName.EnsureAssetCanCreate(false);
@@ -344,6 +398,12 @@ public class CLI
 			File.WriteAllText(Path.Combine(extractInfoTo.FullName, item.Key), item.Value, UTF8WithoutBOM);
 		}
 	}
+	/// <summary>
+	/// Extract Phigros assets to the specified directory. 
+	/// The output directory structure will be the same as the addressable path in the game, with "Assets/Avatar/" as the base path for avatar assets.
+	/// </summary>
+	/// <param name="extractAssetTo">The directory to extract assets to.</param>
+	/// <returns>A task representing the asynchronous operation.</returns>
 	public async Task ExtractAssetsToDirectory(DirectoryInfo extractAssetTo)
 	{
 		extractAssetTo.FullName.EnsureAssetCanCreate(false);

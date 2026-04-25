@@ -4,8 +4,19 @@ using System.Text;
 using System.Text.Json.Nodes;
 
 namespace PhiInfo.CLI;
+
+/// <summary>
+/// TapTap related downloader, used to get the latest apk download url of a TapTap app.
+/// Please do not abuse this class since it is reverse engineered.
+/// </summary>
 public class TapTapDownloader
 {
+	/// <summary>
+	/// Request the latest apk download url of a TapTap app.
+	/// </summary>
+	/// <param name="client">The HttpClient instance used for making requests.</param>
+	/// <param name="appId">The ID of the TapTap app. Default is Phigros (165287).</param>
+	/// <returns>The latest apk download url of the TapTap app.</returns>
 	public static async Task<string> GetApkLatestUrlAsync(HttpClient client, int appId = 165287)
 	{
 		Guid guid = Guid.NewGuid();
