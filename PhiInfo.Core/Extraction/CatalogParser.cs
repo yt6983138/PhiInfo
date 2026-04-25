@@ -1,4 +1,4 @@
-﻿using PhigrosLibraryCSharp;
+﻿using PhigrosLibraryCSharp.Serialization;
 using PhiInfo.Core.Models.Catalog;
 using System.Collections.Frozen;
 using System.Text;
