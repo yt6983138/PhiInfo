@@ -12,7 +12,8 @@ public class CLITest
 			"--obb", Helper.TestObbPath,
 			"--classdata", Helper.TestClassDataTPKPath,
 			"--extract-info-to", "./TestData/ExtractedInfo",
-			"--language", "All"]));
+			"--language", "All",
+			"--debug"]));
 	}
 	[TestMethod]
 	public void InformationAuto()
@@ -25,7 +26,8 @@ public class CLITest
 			"--obb", Helper.TestObbPath + ".tmp",
 			"--classdata", Helper.TestClassDataTPKPath + ".tmp",
 			"--extract-info-to", "./TestData/ExtractedInfoAuto",
-			"--language", "EnglishUS"]));
+			"--language", "EnglishUS",
+			"--debug"]));
 	}
 	[TestMethod]
 	public void Asset()
@@ -38,7 +40,8 @@ public class CLITest
 			"--classdata", Helper.TestClassDataTPKPath,
 			"--extract-asset-to", "./TestData/ExtractedAsset",
 			"--no-illustration",
-			"--no-blur-illustration"];
+			"--no-blur-illustration",
+			"--debug"];
 
 		if (File.Exists(Helper.TestAuxObbPath))
 		{
