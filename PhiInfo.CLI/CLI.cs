@@ -45,6 +45,7 @@ public class CLI
 	};
 
 	#region CLI parsing
+
 	#region Arguments
 	private static readonly Option<string> DownloadApkOption = new("--download-apk")
 	{
@@ -150,6 +151,12 @@ public class CLI
 		}
 	};
 
+	private static readonly Option<bool> DebugOption = new("--debug")
+	{
+		Description = "Enable debug logging",
+		Required = false
+	};
+
 	private static readonly List<Option> Options =
 	[
 		DownloadApkOption,
@@ -165,7 +172,8 @@ public class CLI
 		NoBlurIllustrationOption,
 		NoMusicOption,
 		NoChartsOption,
-		LanguageOption
+		LanguageOption,
+		DebugOption
 	];
 	#endregion
 
@@ -215,9 +223,15 @@ public class CLI
 
 		Language language = parseResult.GetValue(LanguageOption);
 
+		bool debug = parseResult.GetValue(DebugOption);
+
 		ILoggerFactory loggerFactory = LoggerFactory.Create(builder =>
 		{
 			builder.AddConsole();
+			if (debug)
+			{
+				builder.SetMinimumLevel(LogLevel.Debug);
+			}
 		});
 		LibLogger.Writer = new QuietLogWriter(); // tells cpp2il to shut up
 		ILogger<CLI> logger = loggerFactory.CreateLogger<CLI>();
