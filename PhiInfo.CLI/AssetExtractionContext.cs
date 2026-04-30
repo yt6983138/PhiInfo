@@ -60,6 +60,41 @@ public class AssetExtractionContext
 	public Dictionary<string, string> AvatarMap { get; set; } = [];
 
 	/// <summary>
+	/// The base event ID for logging, the actual event ID for each log will be this base plus an 
+	/// offset, you can change this to avoid conflicts with other loggers.
+	/// </summary>
+	public int EventIdBase { get; set; } = 19500;
+
+	/// <summary>
+	/// Event ID used for unhandled asset types. If avatar is not handled using lookup table, this will also be used.
+	/// </summary>
+	public EventId UnhandledEventId => new(this.EventIdBase, "UnhandledAssetPath");
+	/// <summary>
+	/// Event ID used for starting to extract music.
+	/// </summary>
+	public EventId ExtractMusicEventId => new(this.EventIdBase + 1, "StartExtractingMusic");
+	/// <summary>
+	/// Event ID used for starting to extract illustrations (including LowRes and blur variants).
+	/// </summary>
+	public EventId ExtractIllustrationEventId => new(this.EventIdBase + 2, "StartExtractingIllustrationVariants");
+	/// <summary>
+	/// Event ID used for starting to extract text assets (like charts).
+	/// </summary>
+	public EventId ExtractTextEventId => new(this.EventIdBase + 3, "StartExtractingText");
+	/// <summary>
+	/// Event ID used for starting to extract avatars.
+	/// </summary>
+	public EventId ExtractAvatarEventId => new(this.EventIdBase + 4, "StartExtractingAvatar");
+	/// <summary>
+	/// Event ID used when skipping extraction of an asset.
+	/// </summary>
+	public EventId SkipEventId => new(this.EventIdBase + 5, "SkipExtraction");
+	/// <summary>
+	/// Event ID used for finishing extraction of single asset.
+	/// </summary>
+	public EventId FinishEventId => new(this.EventIdBase + 6, "FinishExtraction");
+
+	/// <summary>
 	/// Constructor for <see cref="AssetExtractionContext"/>.
 	/// </summary>
 	/// <param name="addressableBundleExtractor">The addressable bundle extractor used for extracting assets.</param>
@@ -157,30 +192,42 @@ public class AssetExtractionContext
 		}
 		if (!path.StartsWith("Assets/"))
 		{
-			this._logger.LogInformation("Not a general asset, skipping: {path}", path);
+			this._logger.LogDebug(this.SkipEventId, "Not a general asset, skipping: {path}", path);
 			return Task.CompletedTask;
 		}
-		if (path.EndsWith(".wav") && !this._extractOptions.NoMusic)
+		if (path.EndsWith(".wav"))
 		{
+			if (this._extractOptions.NoMusic)
+			{
+				this._logger.LogDebug(this.SkipEventId, "Skipping music due to options: {path}", path);
+				return Task.CompletedTask;
+			}
+
 			return this.ExtractMusic(path);
 		}
-		if (path.EndsWith(".json") && !this._extractOptions.NoCharts)
+		if (path.EndsWith(".json"))
 		{
+			if (this._extractOptions.NoCharts)
+			{
+				this._logger.LogDebug(this.SkipEventId, "Skipping charts due to options: {path}", path);
+				return Task.CompletedTask;
+			}
 			return this.ExtractText(path);
-		}
-		if ((path.Contains("/Illustration.") && this._extractOptions.NoIllustration)
-				|| (path.Contains("/IllustrationLowRes.") && this._extractOptions.NoLowResIllustration)
-				|| (path.Contains("/IllustrationBlur.") && this._extractOptions.NoBlurIllustration))
-		{
-			this._logger.LogInformation("Skipping illustration due to options: {path}", path);
-			return Task.CompletedTask;
 		}
 		if (path.EndsWith(".jpg") || path.EndsWith(".png"))
 		{
+			if ((path.Contains("/Illustration.") && this._extractOptions.NoIllustration)
+				|| (path.Contains("/IllustrationLowRes.") && this._extractOptions.NoLowResIllustration)
+				|| (path.Contains("/IllustrationBlur.") && this._extractOptions.NoBlurIllustration))
+			{
+				this._logger.LogDebug(this.SkipEventId, "Skipping illustration due to options: {path}", path);
+				return Task.CompletedTask;
+			}
+
 			return this.ExtractIllustration(path);
 		}
 
-		this._logger.LogWarning("Unhandled asset type, skipping: {path}", path);
+		this._logger.LogWarning(this.UnhandledEventId, "Unhandled asset type, skipping: {path}", path);
 		return Task.CompletedTask;
 	}
 
@@ -191,13 +238,13 @@ public class AssetExtractionContext
 	/// <returns>A task that represents the asynchronous extraction operation.</returns>
 	public async Task ExtractMusic(string path)
 	{
-		this._logger.LogInformation("Extracting music: {path}", path);
+		this._logger.LogInformation(this.ExtractMusicEventId, "Extracting music: {path}", path);
 		UnityMusic music = await this._addressableBundleExtractor.GetMusicRawAsync(path);
 		FmodSoundBank bank = music.Decode();
 		using RecyclableMemoryStream stream = _memoryStreamManager.GetStream(path, bank.ToOggBytes());
 		stream.Position = 0;
 		await this._extractedFileHandler.Invoke(path, stream);
-		this._logger.LogInformation("Finished extracting music: {path}", path);
+		this._logger.LogInformation(this.FinishEventId, "Finished extracting music: {path}", path);
 	}
 	/// <summary>
 	/// Extract illustration (any kind) from specified path.
@@ -206,7 +253,7 @@ public class AssetExtractionContext
 	/// <returns>A task that represents the asynchronous extraction operation.</returns>
 	public async Task ExtractIllustration(string path)
 	{
-		this._logger.LogInformation("Extracting image: {path}", path);
+		this._logger.LogInformation(this.ExtractIllustrationEventId, "Extracting image: {path}", path);
 		UnityImage image = await this._addressableBundleExtractor.GetImageRawAsync(path);
 		using Image decoded = image.Decode();
 
@@ -215,7 +262,7 @@ public class AssetExtractionContext
 		stream.Position = 0;
 
 		await this._extractedFileHandler.Invoke($"{path[..^4]}.png", stream);
-		this._logger.LogInformation("Finished extracting image: {path}", path);
+		this._logger.LogInformation(this.FinishEventId, "Finished extracting image: {path}", path);
 	}
 	/// <summary>
 	/// Extract avatar from specified path.
@@ -224,7 +271,7 @@ public class AssetExtractionContext
 	/// <returns>A task that represents the asynchronous extraction operation.</returns>
 	public async Task ExtractAvatar(string path)
 	{
-		this._logger.LogInformation("Extracting avatar: {path}", path);
+		this._logger.LogInformation(this.ExtractAvatarEventId, "Extracting avatar: {path}", path);
 		UnityImage image = await this._addressableBundleExtractor.GetImageRawAsync(path);
 		using Image decoded = image.Decode();
 		using RecyclableMemoryStream stream = _memoryStreamManager.GetStream(path);
@@ -240,11 +287,11 @@ public class AssetExtractionContext
 		}
 		else
 		{
-			this._logger.LogWarning("Not building avatar map for: {path}", path);
+			this._logger.LogWarning(this.UnhandledEventId, "Not building avatar map for: {path}", path);
 		}
 
 		await this._extractedFileHandler.Invoke($"{AvatarBasePath}{hash}.png", stream);
-		this._logger.LogInformation("Finished extracting avatar: {path}", path);
+		this._logger.LogInformation(this.FinishEventId, "Finished extracting avatar: {path}", path);
 	}
 	/// <summary>
 	/// Extract text (like charts) from specified path.
@@ -253,7 +300,7 @@ public class AssetExtractionContext
 	/// <returns>A task that represents the asynchronous extraction operation.</returns>
 	public async Task ExtractText(string path)
 	{
-		this._logger.LogInformation("Extracting text: {path}", path);
+		this._logger.LogInformation(this.ExtractTextEventId, "Extracting text: {path}", path);
 		UnityText text = await this._addressableBundleExtractor.GetTextRawAsync(path);
 
 		using Stream stream = _memoryStreamManager.GetStream(path);
@@ -264,6 +311,6 @@ public class AssetExtractionContext
 		stream.Position = 0;
 
 		await this._extractedFileHandler.Invoke(path, streamWriter.BaseStream);
-		this._logger.LogInformation("Finished extracting text: {path}", path);
+		this._logger.LogInformation(this.FinishEventId, "Finished extracting text: {path}", path);
 	}
 }
