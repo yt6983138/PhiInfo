@@ -307,6 +307,9 @@ public class AssetExtractionContext
 		using StreamWriter streamWriter = new(stream, CLI.UTF8WithoutBOM, leaveOpen: true);
 		{
 			await streamWriter.WriteAsync(text.Content);
+
+			// we had leaveOpen set to true so we need to flush it manually
+			await streamWriter.FlushAsync();
 		}
 		stream.Position = 0;
 
