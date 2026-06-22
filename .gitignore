@@ -370,3 +370,6 @@ FodyWeavers.xsd
 /PhiInfo.CLI/output/
 /PhiInfo.Tests/TestData/
 /PhiInfo.Tests/TestData
+
+# secrets
+**/[Ss]ecrets/**
