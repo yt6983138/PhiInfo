@@ -32,17 +32,23 @@ jobs:
         dotnet-version: "8.0"
 
     - name: Restore PhiInfo
+      env:
+        SIXLABORS_LICENSE_KEY: ${{ secrets.SIXLABORS_LICENSE_KEY }}
       run: | 
         dotnet restore ./PhiInfo.Core/PhiInfo.Core.csproj
         dotnet restore ./PhiInfo.CLI/PhiInfo.CLI.csproj
     
     - name: Build PhiInfo
+      env:
+        SIXLABORS_LICENSE_KEY: ${{ secrets.SIXLABORS_LICENSE_KEY }}
       run: | 
         dotnet build ./PhiInfo.Core/PhiInfo.Core.csproj -c Release
         dotnet build ./PhiInfo.CLI/PhiInfo.CLI.csproj -c Release
         dotnet build ./PhiInfo.CLI/PhiInfo.CLI.csproj -c AsLibrary
 
     - name: Pack PhiInfo
+      env:
+        SIXLABORS_LICENSE_KEY: ${{ secrets.SIXLABORS_LICENSE_KEY }}
       run: | 
         dotnet pack ./PhiInfo.Core/PhiInfo.Core.csproj -c Release
         dotnet pack ./PhiInfo.CLI/PhiInfo.CLI.csproj -c Release
