@@ -8,7 +8,7 @@
         <LangVersion>preview</LangVersion>
         <OutputType>Library</OutputType>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
-		<AssemblyVersion>2.0.0</AssemblyVersion>
+		<AssemblyVersion>2.0.1</AssemblyVersion>
 
 		<SixLaborsLicenseKey>$(SIXLABORS_LICENSE_KEY)</SixLaborsLicenseKey>
 		
@@ -33,8 +33,9 @@
 	</PropertyGroup>
 		
     <ItemGroup>
-        <PackageReference Include="AssetsTools.NET" Version="3.0.4" />
+        <PackageReference Include="AssetsTools.NET" Version="3.0.5" />
         <PackageReference Include="AssetsTools.NET.Cpp2IL" Version="3.0.4" />
+        <PackageReference Include="Microsoft.Bcl.Memory" Version="10.0.10" />
         <PackageReference Include="PhigrosLibraryCSharp" Version="5.0.1" />
         <PackageReference Include="Samboy063.LibCpp2IL" Version="2022.1.0-pre-release.19" />
 		<PackageReference Include="AssetRipper.TextureDecoder" Version="2.6.2" />
