@@ -1,5 +1,4 @@
-﻿using PhigrosLibraryCSharp.Serialization;
-using PhiInfo.Core.Models.Catalog;
+﻿using PhiInfo.Core.Models.Catalog;
 using System.Collections.Frozen;
 using System.Text;
 using System.Text.Json;
@@ -145,41 +144,41 @@ public class CatalogParser
 		byte[] entryData)
 	{
 
-		ByteReader keyReader = new(keyData);
-		ByteReader bucketReader = new(bucketData);
-		ByteReader entryReader = new(entryData);
+		using BinaryReader keyReader = new(new MemoryStream(keyData));
+		using BinaryReader bucketReader = new(new MemoryStream(bucketData));
+		using BinaryReader entryReader = new(new MemoryStream(entryData));
 
-		int bucketCount = bucketReader.ReadInt();
+		int bucketCount = bucketReader.ReadInt32();
 		List<CatalogEntry> table = new(bucketCount); // preallocate list, ResolveReferences will add
 													 // so we can't just use Memory<T> or something like that
 		for (int i = 0; i < bucketCount; i++)
 		{
-			int keyPos = bucketReader.ReadInt();
-			keyReader.JumpTo(keyPos);
+			int keyPos = bucketReader.ReadInt32();
+			keyReader.BaseStream.Seek(keyPos, SeekOrigin.Begin);
 
-			CatalogKeyType keyType = keyReader.ReadUnmanaged<CatalogKeyType>();
+			CatalogKeyType keyType = (CatalogKeyType)keyReader.ReadByte();
 			CatalogKey key = keyType switch
 			{
 				CatalogKeyType.Utf8String => CatalogKey.FromString(
 										keyType,
-										keyReader.ReadStringCustomLength(keyReader.ReadInt(), Encoding.UTF8)),
+										Encoding.UTF8.GetString(keyReader.ReadBytes(keyReader.ReadInt32()))),
 				CatalogKeyType.UnicodeString => CatalogKey.FromString(
 										keyType,
-										keyReader.ReadStringCustomLength(keyReader.ReadInt(), Encoding.Unicode)),
+										Encoding.Unicode.GetString(keyReader.ReadBytes(keyReader.ReadInt32()))),
 				CatalogKeyType.Byte => CatalogKey.FromByte(keyReader.ReadByte()),
 				_ => throw new InvalidOperationException($"Unknown key type: {keyType}"),
 			};
 
-			int entryCount = bucketReader.ReadInt();
-			int entryPos = bucketReader.ReadInt();
-			bucketReader.Jump((entryCount - 1) * sizeof(int));
+			int entryCount = bucketReader.ReadInt32();
+			int entryPos = bucketReader.ReadInt32();
+			bucketReader.BaseStream.Seek((entryCount - 1) * sizeof(int), SeekOrigin.Current);
 
 			//ushort raw = (ushort)(entryData[entryStart + 8] ^ (entryData[entryStart + 9] << 8));
 			// raw was originally using xor, but it doesn't make sense since they bitshifted the second byte to the left by 8,
 			// which is the same as just or. so i changed it to this.
 			int entryStart = 4 + (28 * entryPos);
-			entryReader.JumpTo(entryStart + 8);
-			ushort raw = entryReader.ReadUnsignedShort();
+			entryReader.BaseStream.Seek(entryStart + 8, SeekOrigin.Begin);
+			ushort raw = entryReader.ReadUInt16();
 			CatalogValue value = CatalogValue.FromRaw(raw);
 
 			table.Add(new CatalogEntry(key, value));
