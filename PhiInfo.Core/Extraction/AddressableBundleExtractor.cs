@@ -120,7 +120,10 @@ public class AddressableBundleExtractor : IDisposable
 		if (bundlePath.Value.ResolvedKey.Value.StringValue is null)
 			throw new ArgumentException($"Asset has invalid resolved bundle path.", nameof(path));
 
-		return await this._bundleStreamFactory(bundlePath.Value.ResolvedKey.Value.StringValue, ct);
+		string p = bundlePath.Value.ResolvedKey.Value.StringValue;
+		if (p.Contains('_')) p = p.Split('_', 2)[1];
+
+		return await this._bundleStreamFactory(p, ct);
 	}
 
 	#region Public extraction methods
