@@ -41,7 +41,7 @@ public static class PhigrosAssetHelper
 	/// <exception cref="FileNotFoundException">Thrown if level22.split files does not exist.</exception>
 	public static async Task<RecyclableMemoryStream> BuildCompleteLevel22FromZipAsync(ZipArchive zip, CancellationToken ct = default)
 	{
-		const string SplitPrefix = "assets/bin/Data/level22.split";
+		const string SplitPrefix = "assets/bin/Data/sharedassets22.assets.split";
 
 		List<(int index, string name)> level22Parts = [];
 		foreach (ZipArchiveEntry entry in zip.Entries)
