@@ -246,6 +246,7 @@ public class InfoExtractor : IDisposable
 
 				if (levelsDict.Count == 0) continue;
 
+				AssetTypeValueField cnLimitedField = song["isCnLimited"];
 				result.Add(new SongInfo(
 					songId,
 					song["songsKey"].AsString,
@@ -254,6 +255,7 @@ public class InfoExtractor : IDisposable
 					song["illustrator"].AsString,
 					Math.Round(song["previewTime"].AsDouble, 2),
 					Math.Round(song["previewEndTime"].AsDouble, 2),
+					!cnLimitedField.IsDummy && cnLimitedField.AsBool,
 					levelsDict
 				));
 			}

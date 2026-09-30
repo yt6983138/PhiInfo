@@ -12,6 +12,7 @@ namespace PhiInfo.Core.Models.Information;
 /// <param name="Illustrator">Song illustration artist. I.e. <c>BTKCyber (青鸟 modified)</c></param>
 /// <param name="PreviewStartTimeSeconds">Preview start timestamp (seconds). I.e. <c>40.5</c></param>
 /// <param name="PreviewEndTimeSeconds">Preview end timestamp (seconds). I.e. <c>65.5</c></param>
+/// <param name="IsCNLimited">Whether this song is limited to be only playable in China or not.</param>
 /// <param name="Levels">Per-difficulty chart metadata.</param>
 public record SongInfo(
 	string Id,
@@ -21,6 +22,7 @@ public record SongInfo(
 	string Illustrator,
 	double PreviewStartTimeSeconds,
 	double PreviewEndTimeSeconds,
+	bool IsCNLimited,
 	Dictionary<Difficulty, SongLevel> Levels)
 {
 
