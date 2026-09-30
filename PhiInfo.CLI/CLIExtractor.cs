@@ -70,18 +70,19 @@ public class CLIExtractor
 		InfoExtractor? infoExtractor = null;
 		AddressableBundleExtractor? addressableBundleExtractor = null;
 
-		if (option.ApkFile is not null && option.ClassDataFile is not null)
+		if (option.ClassDataFile is not null && option.Packages.Count > 0)
 		{
-			infoExtractor = await InfoExtractor.FromApkAndObbAsync(
-				option.ApkFile,
-				option.ObbFile,
-				option.ClassDataFile);
+			infoExtractor = await InfoExtractor.FromPackagesAsync(
+				option.ClassDataFile,
+				default,
+				option.Packages.ToArray());
 		}
-		if (option.ObbFile is not null)
+
+		if (option.Packages.Count > 0)
 		{
-			addressableBundleExtractor = await AddressableBundleExtractor.FromObbAsync(
-				option.ObbFile,
-				option.AuxObbFile);
+			addressableBundleExtractor = await AddressableBundleExtractor.FromPackagesAsync(
+				default,
+				option.Packages.ToArray());
 		}
 
 		return new(infoExtractor, addressableBundleExtractor, option, logger);
@@ -118,9 +119,9 @@ public class CLIExtractor
 		infoExtractor.ExtractLanguage = lang;
 
 		List<Folder>? collections = null;
-		if (this.ExtractOptions.ObbFile is null)
+		if (!infoExtractor.CanExtractCollections)
 		{
-			this._logger.LogWarning("Collection cannot be extracted because of missing obb file.");
+			this._logger.LogWarning("Collection cannot be extracted because required assets (sharedassets22/level22) were not found in the provided packages.");
 		}
 		else
 		{
@@ -182,7 +183,7 @@ public class CLIExtractor
 		}
 		else
 		{
-			this._logger.LogWarning("Collection TSV cannot be created because of missing obb file.");
+			this._logger.LogWarning("Collection TSV cannot be created because collection data was not extracted.");
 		}
 
 		this._logger.LogInformation("Building difficulty.tsv...");
@@ -270,7 +271,7 @@ public class CLIExtractor
 		List<Avatar>? avatars = this.InfoExtractor?.ExtractAvatars();
 		if (avatars is null)
 		{
-			this._logger.LogWarning("Pre-extracted avatar list is not available because of missing apk or class data file.");
+			this._logger.LogWarning("Pre-extracted avatar list is not available because of missing packages or class data file.");
 		}
 		return new AssetExtractionContext(
 			addressableBundleExtractor,

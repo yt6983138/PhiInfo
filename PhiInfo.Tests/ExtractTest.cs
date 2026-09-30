@@ -13,10 +13,8 @@ public sealed class ExtractTest
 	{
 		Helper.EnsureWorkingDirectory();
 
-		using InfoExtractor rawExtractor = await InfoExtractor.FromApkAndObbAsync(
-			File.OpenRead(Helper.TestApkPath),
-			File.OpenRead(Helper.TestObbPath),
-			File.OpenRead(Helper.TestClassDataTPKPath));
+		using InfoExtractor rawExtractor = await InfoExtractor.FromPackagesAsync(
+			Helper.GetClassDataTPKStream(), default, Helper.GetTestPackageStreams());
 
 		List<SongInfo> songs = rawExtractor.ExtractSongInfo();
 		List<Folder> collections = rawExtractor.ExtractCollections();
@@ -42,9 +40,7 @@ public sealed class ExtractTest
 		//	File.OpenRead(Helper.TestObbPath),
 		//	File.OpenRead(Helper.TestClassDataTPKPath));
 
-		AddressableBundleExtractor assetExtractor = await AddressableBundleExtractor.FromObbAsync(
-			File.OpenRead(Helper.TestObbPath),
-			File.Exists(Helper.TestAuxObbPath) ? File.OpenRead(Helper.TestAuxObbPath) : null);
+		AddressableBundleExtractor assetExtractor = await AddressableBundleExtractor.FromPackagesAsync(default, Helper.GetTestPackageStreams());
 
 		Console.WriteLine("Assets in catalog:");
 		Console.WriteLine(string.Join('\n', assetExtractor.ListMeaningfulAssetPathsInCatalog()));

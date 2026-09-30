@@ -8,8 +8,7 @@ public class CLITest
 	{
 		Helper.EnsureWorkingDirectory();
 		Assert.AreEqual(0, CLI.CLI.Main([
-			"--apk", Helper.TestApkPath,
-			"--obb", Helper.TestObbPath,
+			.. Helper.TestPackages.Where(File.Exists).Select(x => new string[] { "-p", x }).SelectMany(x => x).ToArray(),
 			"--classdata", Helper.TestClassDataTPKPath,
 			"--extract-info-to", "./TestData/ExtractedInfo",
 			"--language", "All",
@@ -22,9 +21,7 @@ public class CLITest
 		Assert.AreEqual(0, CLI.CLI.Main([
 			"--download-apk", "TAPTAP",
 			"--download-classdata", "AUTO",
-			"--apk", Helper.TestApkPath + ".tmp",
-			"--obb", Helper.TestObbPath + ".tmp",
-			"--classdata", Helper.TestClassDataTPKPath + ".tmp",
+			.. Helper.TestPackages.Where(File.Exists).Select(x => new string[] { "-p", x + ".tmp" }).SelectMany(x => x).ToArray(),
 			"--extract-info-to", "./TestData/ExtractedInfoAuto",
 			"--language", "EnglishUS",
 			"--debug"]));
@@ -35,18 +32,11 @@ public class CLITest
 		Helper.EnsureWorkingDirectory();
 
 		List<string> args = [
-			"--apk", Helper.TestApkPath,
-			"--obb", Helper.TestObbPath,
-			"--classdata", Helper.TestClassDataTPKPath,
+			.. Helper.TestPackages.Where(File.Exists).Select(x => new string[] { "-p", x }).SelectMany(x => x).ToArray(),
 			"--extract-asset-to", "./TestData/ExtractedAsset",
 			"--no-illustration",
 			"--no-blur-illustration",
 			"--debug"];
-
-		if (File.Exists(Helper.TestAuxObbPath))
-		{
-			args.AddRange(["--aux-obb", Helper.TestAuxObbPath]);
-		}
 
 		Assert.AreEqual(0, CLI.CLI.Main(args.ToArray()));
 	}

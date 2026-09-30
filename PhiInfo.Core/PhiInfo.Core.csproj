@@ -8,7 +8,7 @@
         <LangVersion>preview</LangVersion>
         <OutputType>Library</OutputType>
 		<GenerateDocumentationFile>true</GenerateDocumentationFile>
-		<AssemblyVersion>2.0.1</AssemblyVersion>
+		<AssemblyVersion>3.0.0</AssemblyVersion>
 
 		<SixLaborsLicenseKey>$(SIXLABORS_LICENSE_KEY)</SixLaborsLicenseKey>
 		

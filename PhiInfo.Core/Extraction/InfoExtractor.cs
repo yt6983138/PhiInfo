@@ -9,16 +9,18 @@ namespace PhiInfo.Core.Extraction;
 
 /// <summary>
 /// Extracts information from Phigros assets. Please see warning at 
-/// <see cref="InfoExtractor(Stream, Stream, Stream?, byte[], byte[], Stream)"/>.
+/// <see cref="InfoExtractor(Stream, Stream, Stream?, Stream?, byte[], byte[], Stream)"/>.
 /// </summary>
 public class InfoExtractor : IDisposable
 {
 
 	private readonly AssetsFile _level0;
+	private readonly AssetsFile? _sharedAssets22;
 	private readonly AssetsFile? _level22;
 	private readonly MonoBehaviourFinder _monoBehaviourFinder;
 
 	private readonly AssetsFileReader _level0Reader;
+	private readonly AssetsFileReader? _sharedAssets22Reader;
 	private readonly AssetsFileReader? _level22Reader;
 
 	/// <summary>
@@ -26,6 +28,11 @@ public class InfoExtractor : IDisposable
 	/// may cause <see cref="ObjectDisposedException"/> or <see cref="NullReferenceException"/>.
 	/// </summary>
 	public bool Disposed { get; private set; }
+
+	/// <summary>
+	/// Gets whether collection data can be extracted (requires sharedassets22 and level22).
+	/// </summary>
+	public bool CanExtractCollections => this._sharedAssets22 is not null && this._level22 is not null;
 
 	/// <summary>
 	/// Extracts collections and tips in the specified language. Default is Chinese.
@@ -40,23 +47,23 @@ public class InfoExtractor : IDisposable
 	/// instances sequentially.
 	/// 
 	/// All streams passed to this constructor should be seekable and support reading, and they will be 
-	/// disposed when the InfoExtractor is disposed. The <paramref name="level22"/> stream can be null, but if it is null, 
+	/// disposed when the InfoExtractor is disposed. The <paramref name="sharedAssets22"/> stream can be null, but if it is null, 
 	/// collection data cannot be extracted.
-	/// 
-	/// If you are using merged apk file (like from TapTap), supplying all arguments from just apk is also accepted.
-	/// Arguments marked as "In obb" are not strictly required to be in obb since they are just zip anyways.
 	/// </summary>
-	/// <param name="globalGameManagers">The <c>assets/bin/Data/globalgamemanagers.assets</c> file. (In apk)</param>
-	/// <param name="level0">The <c>assets/bin/Data/level0</c> file. (In apk)</param>
-	/// <param name="level22">The <c>assets/bin/Data/level22.split*</c> files. (In obb) Need to be merged. 
+	/// <param name="globalGameManagers">The <c>assets/bin/Data/globalgamemanagers.assets</c> file.</param>
+	/// <param name="level0">The <c>assets/bin/Data/level0</c> file.</param>
+	/// <param name="sharedAssets22">The <c>assets/bin/Data/sharedassets22.assets.split*</c> files merged. 
 	/// If not supplied collections cannot be extracted.</param>
-	/// <param name="il2CppSo">The <c>lib/arm64-v8a/libil2cpp.so</c> file. (In apk)</param>
-	/// <param name="globalMetadata">The <c>assets/bin/Data/Managed/Metadata/global-metadata.dat</c> file. (In apk)</param>
+	/// <param name="level22">The <c>assets/bin/Data/level22</c> file. 
+	/// If not supplied collections cannot be extracted.</param>
+	/// <param name="il2CppSo">The <c>lib/arm64-v8a/libil2cpp.so</c> file.</param>
+	/// <param name="globalMetadata">The <c>assets/bin/Data/Managed/Metadata/global-metadata.dat</c> file.</param>
 	/// <param name="classDataTPK">Class database file. Can be obtained 
 	/// <a href="https://nightly.link/AssetRipper/Tpk/workflows/type_tree_tpk/master/uncompressed_file.zip">here</a>.</param>
 	public InfoExtractor(
 		Stream globalGameManagers,
 		Stream level0,
+		Stream? sharedAssets22,
 		Stream? level22,
 		byte[] il2CppSo,
 		byte[] globalMetadata,
@@ -67,8 +74,13 @@ public class InfoExtractor : IDisposable
 		this._level0 = new();
 		this._level0.Read(level0Reader);
 
-		if (level22 is not null)
+		if (sharedAssets22 is not null && level22 is not null)
 		{
+			AssetsFileReader sharedAssets22Reader = new(sharedAssets22);
+			this._sharedAssets22Reader = sharedAssets22Reader;
+			this._sharedAssets22 = new();
+			this._sharedAssets22.Read(sharedAssets22Reader);
+
 			AssetsFileReader level22Reader = new(level22);
 			this._level22Reader = level22Reader;
 			this._level22 = new();
@@ -103,27 +115,40 @@ public class InfoExtractor : IDisposable
 	}
 
 	/// <summary>
-	/// Constructs an <see cref="InfoExtractor"/> from apk and obb streams. Please see warning at 
-	/// <see cref="InfoExtractor(Stream, Stream, Stream?, byte[], byte[], Stream)" />.
+	/// Constructs an <see cref="InfoExtractor"/> from package streams. Please see warning at 
+	/// <see cref="InfoExtractor(Stream, Stream, Stream?, Stream?, byte[], byte[], Stream)" />.
 	/// 
-	/// If you are using merged apk file (like from TapTap), supplying arguments using apk is also accepted.
-	/// <paramref name="obb"/> is not strictly required to be obb since it is just zip anyways.
+	/// Searches through all provided packages to find the required assets.
 	/// </summary>
-	/// <param name="apk">Apk file stream.</param>
-	/// <param name="obb">Obb file stream.</param>
-	/// <param name="classDataTPK">Class data database file. See <see cref="InfoExtractor(Stream, Stream, Stream?, byte[], byte[], Stream)"/> 
+	/// <param name="classDataTPK">Class data database file. See <see cref="InfoExtractor(Stream, Stream, Stream?, Stream?, byte[], byte[], Stream)"/> 
 	/// classDataTpk param.</param>
 	/// <param name="ct">Cancellation token.</param>
+	/// <param name="packages">Package streams (APK, OBB, split APKs) to search for required assets.</param>
 	/// <returns>A constructed <see cref="InfoExtractor"/>.</returns>
-	public static async Task<InfoExtractor> FromApkAndObbAsync(Stream apk, Stream? obb, Stream classDataTPK, CancellationToken ct = default)
+	public static async Task<InfoExtractor> FromPackagesAsync(Stream classDataTPK, CancellationToken ct = default, params Stream[] packages)
 	{
 		(Stream GlobalGameManagers, Stream Level0, byte[] Il2CppSo, byte[] GlobalMetadata) =
-			await PhigrosAssetHelper.GetInformationExtractionRequiredDataAsync(apk, ct);
+			await PhigrosAssetHelper.GetInformationExtractionRequiredDataAsync(ct, packages);
+
+		Stream? sharedAssets22 = null;
+		Stream? level22 = null;
+
+		try
+		{
+			sharedAssets22 = await PhigrosAssetHelper.GetSharedAssets22FromPackagesAsync(ct, packages);
+			level22 = await PhigrosAssetHelper.GetLevel22FromPackagesAsync(ct, packages);
+		}
+		catch (FileNotFoundException)
+		{
+			// These are optional for collection extraction
+			// If not found, collection extraction will fail but other extraction will work
+		}
 
 		return new InfoExtractor(
 			GlobalGameManagers,
 			Level0,
-			obb is null ? null : await PhigrosAssetHelper.GetLevel22FromObbAsync(obb, ct),
+			sharedAssets22,
+			level22,
 			Il2CppSo,
 			GlobalMetadata,
 			classDataTPK
@@ -140,8 +165,10 @@ public class InfoExtractor : IDisposable
 
 		this._level0Reader.Dispose();
 		this._level22Reader?.Dispose();
+		this._sharedAssets22Reader?.Dispose();
 		this._level0.Close();
 		this._level22?.Close();
+		this._sharedAssets22?.Close();
 		this._monoBehaviourFinder.Dispose();
 	}
 
@@ -266,42 +293,80 @@ public class InfoExtractor : IDisposable
 
 	/// <summary>
 	/// Extract collections in <see cref="ExtractLanguage"/>.
-	/// This require level22, so if it is not supplied in the constructor, 
+	/// This require sharedassets22, so if it is not supplied in the constructor, 
 	/// this method will throw <see cref="InvalidOperationException"/>.
 	/// </summary>
 	/// <returns>A list of collections. Phigros organizes them in a Folder/File structure.</returns>
-	/// <exception cref="InvalidOperationException">Thrown if level22 is not supplied in constructor.</exception>
+	/// <exception cref="InvalidOperationException">Thrown if sharedassets22 is not supplied in constructor.</exception>
 	public List<Folder> ExtractCollections()
 	{
-		if (this._level22 is null)
-			throw new InvalidOperationException("Level22 asset is required to extract collection data");
+		if (this._sharedAssets22 is null || this._level22 is null)
+			throw new InvalidOperationException("Sharedassets22 asset is required to extract collection data");
 
-		AssetTypeValueField collectionField = this._monoBehaviourFinder.FindMonoBehaviour(this._level22, "SaturnOSControl");
+		AssetTypeValueField collectionDatabase = this._monoBehaviourFinder.FindMonoBehaviour(this._sharedAssets22, "CollectionDatabase");
+		AssetTypeValueField saturnOSControl = this._monoBehaviourFinder.FindMonoBehaviour(this._level22, "SaturnOSControl");
 
-		List<Folder> result = [];
-		foreach (AssetTypeValueField folder in collectionField["folders"]["Array"])
+		FileItem[] allFiles = collectionDatabase["items"]["Array"]
+			.Select(x => new FileItem(
+				x["key"].AsString,
+				x["subIndex"].AsInt,
+				x["getSong"].AsInt,
+				x["name"][this.ExtractLanguage.GetStringId()].AsString,
+				x["date"].AsString,
+				x["supervisor"][this.ExtractLanguage.GetStringId()].AsString,
+				x["category"].AsString,
+				x["content"][this.ExtractLanguage.GetStringId()].AsString,
+				x["properties"][this.ExtractLanguage.GetStringId()].AsString
+			))
+			.ToArray();
+
+		List<Folder> folders = saturnOSControl["folders"]["Array"]
+			.Select(x => new Folder(
+				x["title"][this.ExtractLanguage.GetStringId()].AsString,
+				x["subTitle"][this.ExtractLanguage.GetStringId()].AsString,
+				x["startIndex"].AsInt,
+				x["endIndex"].AsInt,
+				x["excludedFiles"]["Array"].Select(f => new ExcludedFileRange(f["start"].AsInt, f["end"].AsInt)).ToArray(),
+				x["includedIsolatedFiles"]["Array"].Select(f => new FileReference(f["key"].AsString, f["subIndex"].AsInt)).ToArray(),
+				x["cover"].AsString,
+				x["fakeCoverFlag"].AsString,
+				x["fakeCoverCode"].AsString,
+				x["fakeCoverBlurCode"].AsString,
+				x["allNum"].AsInt,
+				[]
+			)).ToList();
+
+		foreach (Folder folder in folders)
 		{
-			List<FileItem> files = folder["files"]["Array"]
-				.Select(file => new FileItem(
-					file["key"].AsString,
-					file["subIndex"].AsInt,
-					file["name"][this.ExtractLanguage.GetStringId()].AsString,
-					file["date"].AsString,
-					file["supervisor"][this.ExtractLanguage.GetStringId()].AsString,
-					file["category"].AsString,
-					file["content"][this.ExtractLanguage.GetStringId()].AsString,
-					file["properties"][this.ExtractLanguage.GetStringId()].AsString
-				)).ToList();
+			foreach (FileItem file in allFiles)
+			{
+				int getSong = Math.Abs(file.GetSong);
 
-			result.Add(new Folder(
-				folder["title"][this.ExtractLanguage.GetStringId()].AsString,
-				folder["subTitle"][this.ExtractLanguage.GetStringId()].AsString,
-				folder["cover"].AsString,
-				files
-			));
+				if (folder.IncludedIsolatedFiles.Any(x => x.Key == file.Key && x.SubIndex == file.SubIndex))
+				{
+					file.Classified = true;
+					folder.Files.Add(file);
+					continue;
+				}
+
+				if (folder.ExcludedFileRanges.Any(x => getSong >= x.StartIndex && getSong <= x.EndIndex))
+					continue;
+
+				if (getSong < folder.StartIndex || getSong > folder.EndIndex)
+					continue;
+
+				file.Classified = true;
+				folder.Files.Add(file);
+			}
 		}
 
-		return result;
+		Folder unclassifiedTemplate = Folder.UnclassifiedTemplate with
+		{
+			Files = allFiles.Where(x => !x.Classified).ToList()
+		};
+		folders.Add(unclassifiedTemplate);
+
+		return folders;
 	}
 
 	/// <summary>

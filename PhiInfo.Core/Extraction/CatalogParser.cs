@@ -75,15 +75,16 @@ public class CatalogParser
 	}
 
 	/// <summary>
-	/// Creates a <see cref="CatalogParser"/> from an OBB (Opaque Binary Blob) stream.
+	/// Creates a <see cref="CatalogParser"/> from package streams.
 	/// </summary>
-	/// <param name="obb">A stream containing OBB data with embedded catalog information.</param>
+	/// <param name="packages">Package streams (APK, OBB, split APKs) to search for catalog.json.</param>
 	/// <param name="ct">A cancellation token to observe while waiting for the task to complete.</param>
 	/// <returns>A new <see cref="CatalogParser"/> instance.</returns>
-	/// <exception cref="ArgumentException">Thrown when the OBB is invalid or catalog cannot be extracted.</exception>
-	public static async Task<CatalogParser> FromObbAsync(Stream obb, CancellationToken ct = default)
+	/// <exception cref="ArgumentException">Thrown when the packages are invalid or catalog cannot be extracted.</exception>
+	/// <exception cref="FileNotFoundException">Thrown if catalog.json is not found in any package.</exception>
+	public static async Task<CatalogParser> FromPackagesAsync(CancellationToken ct = default, params Stream[] packages)
 	{
-		using Stream catalogStream = PhigrosAssetHelper.GetCatalogStreamFromObb(obb);
+		using Stream catalogStream = await PhigrosAssetHelper.GetCatalogStreamFromPackagesAsync(packages);
 		return await FromJsonAsync(catalogStream, ct);
 	}
 

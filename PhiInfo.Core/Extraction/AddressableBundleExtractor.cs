@@ -35,8 +35,7 @@ public class AddressableBundleExtractor : IDisposable
 	/// <summary>
 	/// Creates an instance of this class with a <see cref="CatalogParser"/> and a <see cref="BundleStreamFactory"/>. 
 	/// Recommend to use the static methods in <see cref="PhigrosAssetHelper"/> to create these parameters, 
-	/// or use the static method like <see cref="FromObbAsync(Stream, Stream?, CancellationToken)"/> to create an instance of this class directly.
-	/// Auxiliary obb is sometimes needed.
+	/// or use the static method like <see cref="FromPackagesAsync(CancellationToken, Stream[])"/> to create an instance of this class directly.
 	/// </summary>
 	/// <param name="catalogParser">A catalog parser.</param>
 	/// <param name="bundleStreamFactory">A bundle stream factory.</param>
@@ -52,17 +51,15 @@ public class AddressableBundleExtractor : IDisposable
 	/// Please see <see cref="AddressableBundleExtractor(CatalogParser, BundleStreamFactory, Action)"/> for
 	/// more information.
 	/// 
-	/// If you are using merged apk file (like from TapTap), supplying arguments using apk is also accepted.
-	/// <paramref name="obb"/> and <paramref name="auxObb"/> are not strictly required to be obb since they are just zip anyways.
+	/// Searches through all provided packages to find the catalog and bundle files.
 	/// </summary>
-	/// <param name="obb">The obb file. May need <paramref name="auxObb"/> sometimes.</param>
-	/// <param name="auxObb">The auxiliary (patch) obb file.</param>
+	/// <param name="packages">Package streams (APK, OBB, split APKs) to search for catalog and bundle files.</param>
 	/// <param name="ct">Cancellation token.</param>
 	/// <returns>A new instance of <see cref="AddressableBundleExtractor"/>.</returns>
-	public static async Task<AddressableBundleExtractor> FromObbAsync(Stream obb, Stream? auxObb = null, CancellationToken ct = default)
+	public static async Task<AddressableBundleExtractor> FromPackagesAsync(CancellationToken ct = default, params Stream[] packages)
 	{
-		CatalogParser catalogParser = await CatalogParser.FromObbAsync(obb, ct);
-		(BundleStreamFactory? factory, Action? disposer) = PhigrosAssetHelper.CreateBundleFactoryFromObb(obb, auxObb);
+		CatalogParser catalogParser = await CatalogParser.FromPackagesAsync(ct, packages);
+		(BundleStreamFactory? factory, Action? disposer) = PhigrosAssetHelper.CreateBundleFactoryFromPackages(packages);
 		return new(catalogParser, factory, disposer);
 	}
 

@@ -5,6 +5,7 @@ namespace PhiInfo.Core.Models.Information;
 /// </summary>
 /// <param name="Key">Internal key of the item. I.e. <c>Yshanfeng</c></param>
 /// <param name="SubIndex">[Unknown] I.e. <c>1</c></param>
+/// <param name="GetSong">Used to determine which folder this item belongs to.</param>
 /// <param name="Name">Display name of the item. I.e. <c>【录音】山风</c></param>
 /// <param name="Date">In-game date string. I.e. <c>770/02/29</c></param>
 /// <param name="Supervisor">Supervisor/author label shown in-game. I.e. <c>鸠</c></param>
@@ -14,10 +15,13 @@ namespace PhiInfo.Core.Models.Information;
 public record FileItem(
 	string Key,
 	int SubIndex,
+	int GetSong,
 	string Name,
 	string Date,
 	string Supervisor,
 	string Category,
 	string Content,
-	string Properties
-);
+	string Properties)
+{
+	internal bool Classified { get; set; } = false;
+}

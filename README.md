@@ -35,7 +35,7 @@ Features:
 1. Ultra-fast extraction with concurrency (All assets in 22.9 seconds on my PC)
 2. Flexible options to only extract what you need
 3. Automatic downloading of APK and classdata.tpk from TapTap or URL
-4. Support for extracting from OBB and auxiliary OBB files
+4. Support for extracting from multiple packages (APK, OBB, split APKs)
 5. Support for multiple languages (Chinese, English, Japanese, Korean, Traditional Chinese)
 6. Support for Phigros_Resource compatible format<sup>[1]</sup>, so you can swap to this easily
 
@@ -47,11 +47,9 @@ options:
 
 | Name | Valid values | Default value | Description |
 | --- | --- | --- | --- |
-| `--download-apk` | `<url>`, `TAPTAP` | | Download APK from URL or TapTap to the `--apk` path or temp dir. |
+| `--download-apk` | `<url>`, `TAPTAP` | | Download APK from URL or TapTap to the first `--package` path (if specified) or temp dir. |
 | `--download-classdata` | `<url>`, `AUTO` | | Download classdata.tpk from URL or automatically to `--classdata` path or temp dir. |
-| `--apk` | `<path>` | | Path to the APK file. |
-| `--obb` | `<path>` | | Path to the OBB file. |
-| `--aux-obb` | `<path>` | | Path to the auxiliary OBB file. |
+| `--package, -p, --packages` | `<path>` | | Path to package file(s) (APK, OBB, split APKs). Can be specified multiple times. |
 | `--classdata` | `<path>` | | Path to the class data TPK file. |
 | `--extract-info-to` | `<path>` | | Directory to extract Phigros information. |
 | `--extract-asset-to`| `<path>` | | Directory to extract Phigros assets. |
@@ -82,13 +80,17 @@ and we also have helper classes like `PhigrosAssetHelper` to help you prepare re
 
 Example code:
 ```csharp
-// Open your Phigros APK, OBB, and classdata.tpk files
-// If your apk is from TapTap, supplying arguments such as auxObb or obb
-// using just apk stream will work since taptap does not split resources.
+// Open your Phigros package files (APK, OBB, split APKs) and classdata.tpk
+// Due to Google Play format changes, games are now split into multiple packages:
+// - base.apk (or com.PigeonGames.Phigros.apk for older versions)
+// - split_UnityDataAssetPack.apk
+// - main.obb
+// - patch.obb (if exists)
+// etc.
 //
-// Just remember to open two different streams otherwise there might be
-// concurrency issues
-using Stream apk = File.OpenRead("com.PigeonGames.Phigros.apk");
+// For TapTap APKs that aren't split, you can just pass the single APK file.
+using Stream baseApk = File.OpenRead("base.apk");
+using Stream unityDataAssetPack = File.OpenRead("split_UnityDataAssetPack.apk");
 using Stream obb = File.OpenRead("main.obb");
 using Stream classDataTpk = File.OpenRead("classdata.tpk");
 
@@ -97,10 +99,14 @@ using Stream classDataTpk = File.OpenRead("classdata.tpk");
 // LibLogger.Writer = new QuietLogWriter();
 // LibLogger.Writer = new StreamLogWriter(<your stream here>);
 
-// Construct the extractor from static factory method,
-// please do not construct the extractor multiple times, 
+// Construct the extractor from static factory method.
+// Pass all package files as params - the extractor will search through them.
+// Please do not construct the extractor multiple times, 
 // check the constructor documentation for details.
-using InfoExtractor extractor = await InfoExtractor.FromApkAndObbAsync(apk, obb, classDataTpk);  
+using InfoExtractor extractor = await InfoExtractor.FromPackagesAsync(
+    classDataTpk, 
+    default, 
+    baseApk, unityDataAssetPack, obb);  
   
 // Check game version and region
 Console.WriteLine($"Phigros version: {extractor.GetVersionString()} ({extractor.GetVersionInteger()})");
@@ -117,7 +123,7 @@ List<ChapterInfo> chapters = extractor.ExtractChapters();
 extractor.ExtractLanguage = Language.EnglishUS;
 
 List<string> tips = extractor.ExtractTips();
-List<Folder> collections = extractor.ExtractCollections(); // requires OBB (level22)
+List<Folder> collections = extractor.ExtractCollections(); // requires sharedassets22 (from split packages)
 ```
 ### Asset extraction
 Use `AssetExtractor` to extract assets.
@@ -128,13 +134,13 @@ like `PhigrosAssetHelper` to help you prepare resources.
 
 Example code:
 ```csharp
-// Please check the information extraction example for details about
-// how to prepare streams.
+// Open your package files that contain assets (OBB files, split APKs, etc.)
+// The extractor will search through all provided packages to find assets.
 using Stream obb = File.OpenRead("main.obb");
 using Stream auxObb = File.OpenRead("patch.obb"); // optional auxiliary OBB  
   
 AddressableBundleExtractor assetExtractor =
-    await AddressableBundleExtractor.FromObbAsync(obb, auxObb);
+    await AddressableBundleExtractor.FromPackagesAsync(default, obb, auxObb);
   
 // List all available asset paths, this would trim out entries that only contains
 // bundle name. Misc entries like shaders or ui assets may still exist.

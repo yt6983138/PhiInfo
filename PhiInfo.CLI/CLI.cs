@@ -50,10 +50,10 @@ public class CLI
 	private static readonly Option<string> DownloadApkOption = new("--download-apk")
 	{
 		Description = """
-			Download APK from specified URL, or fill "TAPTAP" for to pick the source from TapTap.
-			TapTap downloading will not contain OBB since TapTap put everything in APK.
-			Specifying this option will use the --apk option as the download destination, 
-			if it is not specified, the APK will be downloaded to temporary directory.
+			Download APK from specified URL, or fill "TAPTAP" to pick the source from TapTap.
+			TapTap downloading will not contain OBB since TapTap puts everything in APK.
+			Specifying this option will use the first --package path as the download destination (if specified), 
+			otherwise the APK will be downloaded to a temporary directory.
 			""",
 		Required = false
 	};
@@ -67,20 +67,11 @@ public class CLI
 		Required = false
 	};
 
-	private static readonly Option<FileInfo> ApkOption = new("--apk")
+	private static readonly Option<FileInfo[]> PackagesOption = new("--package", "-p", "--packages")
 	{
-		Description = "Path to the APK file",
-		Required = false
-	};
-	private static readonly Option<FileInfo> ObbOption = new("--obb")
-	{
-		Description = "Path to the OBB file",
-		Required = false
-	};
-	private static readonly Option<FileInfo> AuxObbOption = new("--aux-obb")
-	{
-		Description = "Path to the auxiliary OBB file",
-		Required = false
+		Description = "Path to package file(s) (APK, OBB, split APKs). Can be specified multiple times.",
+		Required = false,
+		AllowMultipleArgumentsPerToken = true
 	};
 	private static readonly Option<FileInfo> ClassDataOption = new("--classdata")
 	{
@@ -161,9 +152,7 @@ public class CLI
 	[
 		DownloadApkOption,
 		DownloadClassDataOption,
-		ApkOption,
-		ObbOption,
-		AuxObbOption,
+		PackagesOption,
 		ClassDataOption,
 		ExtractInfoOption,
 		ExtractAssetOption,
@@ -207,9 +196,7 @@ public class CLI
 		string? downloadApk = parseResult.GetValue(DownloadApkOption);
 		string? downloadClassData = parseResult.GetValue(DownloadClassDataOption);
 
-		FileInfo? apkFile = parseResult.GetValue(ApkOption);
-		FileInfo? obbFile = parseResult.GetValue(ObbOption);
-		FileInfo? auxObbFile = parseResult.GetValue(AuxObbOption);
+		FileInfo[]? packageFiles = parseResult.GetValue(PackagesOption);
 		FileInfo? classDataFile = parseResult.GetValue(ClassDataOption);
 
 		DirectoryInfo? extractInfoTo = parseResult.GetValue(ExtractInfoOption);
@@ -236,14 +223,16 @@ public class CLI
 		LibLogger.Writer = new QuietLogWriter(); // tells cpp2il to shut up
 		ILogger<CLI> logger = loggerFactory.CreateLogger<CLI>();
 
+		List<FileInfo> resolvedPackages = packageFiles is not null ? [.. packageFiles] : [];
+
 		if (downloadApk is not null)
 		{
-			FileInfo downloadedApk = await DownloadApk(downloadApk, apkFile, logger);
-			apkFile ??= downloadedApk;
-
-			// replace them with apk file since TapTap puts everything in apk
-			obbFile = downloadedApk;
-			auxObbFile = null;
+			FileInfo? destination = resolvedPackages.FirstOrDefault();
+			FileInfo downloadedApk = await DownloadApk(downloadApk, destination, logger);
+			if (destination is null)
+			{
+				resolvedPackages.Add(downloadedApk);
+			}
 		}
 
 		if (downloadClassData is not null)
@@ -251,28 +240,44 @@ public class CLI
 			classDataFile = await DownloadClassData(downloadClassData, classDataFile, logger);
 		}
 
-		CLIExtractor extractor = await CLIExtractor.FromOptionAsync(new()
+		List<FileStream> openedPackageStreams = [];
+		try
 		{
-			ApkFile = apkFile?.OpenRead(),
-			ObbFile = obbFile?.OpenRead(),
-			AuxObbFile = auxObbFile?.OpenRead(),
-			ClassDataFile = classDataFile?.OpenRead(),
-			NoIllustration = noIllustration,
-			NoLowResIllustration = noLowResIllustration,
-			NoBlurIllustration = noBlurIllustration,
-			NoMusic = noMusic,
-			NoCharts = noCharts
-		}, loggerFactory.CreateLogger<CLIExtractor>());
-		CLI core = new(extractor, logger);
+			foreach (FileInfo package in resolvedPackages)
+			{
+				openedPackageStreams.Add(package.OpenRead());
+			}
 
-		if (extractInfoTo is not null)
-		{
-			await core.ExtractInfoToDirectory(extractInfoTo, language);
+			using Stream? classDataStream = classDataFile?.OpenRead();
+
+			CLIExtractor extractor = await CLIExtractor.FromOptionAsync(new()
+			{
+				Packages = openedPackageStreams.Cast<Stream>().ToList(),
+				ClassDataFile = classDataStream,
+				NoIllustration = noIllustration,
+				NoLowResIllustration = noLowResIllustration,
+				NoBlurIllustration = noBlurIllustration,
+				NoMusic = noMusic,
+				NoCharts = noCharts
+			}, loggerFactory.CreateLogger<CLIExtractor>());
+			CLI core = new(extractor, logger);
+
+			if (extractInfoTo is not null)
+			{
+				await core.ExtractInfoToDirectory(extractInfoTo, language);
+			}
+
+			if (extractAssetTo is not null)
+			{
+				await core.ExtractAssetsToDirectory(extractAssetTo);
+			}
 		}
-
-		if (extractAssetTo is not null)
+		finally
 		{
-			await core.ExtractAssetsToDirectory(extractAssetTo);
+			foreach (FileStream stream in openedPackageStreams)
+			{
+				stream.Dispose();
+			}
 		}
 	}
 	#endregion

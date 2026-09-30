@@ -6,19 +6,10 @@
 public class ExtractOptions
 {
 	/// <summary>
-	/// The stream to apk file.
+	/// Streams to package files (APK, OBB, split APKs).
 	/// </summary>
-	public Stream? ApkFile { get; set; }
-	/// <summary>
-	/// The stream to obb file. 
-	/// Note: this should not be same stream to apk file, because they may read in parallel.
-	/// If they share same file, please use <see cref="File.OpenRead(string)"/> to create two separate streams.
-	/// </summary>
-	public Stream? ObbFile { get; set; }
-	/// <summary>
-	/// The stream to auxiliary obb file.
-	/// </summary>
-	public Stream? AuxObbFile { get; set; }
+	public List<Stream> Packages { get; set; } = [];
+
 	/// <summary>
 	/// The stream to class data file.
 	/// </summary>
