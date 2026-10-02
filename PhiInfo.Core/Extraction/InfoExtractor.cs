@@ -1,38 +1,47 @@
 using AssetsTools.NET;
+using AssetsTools.NET.Extra;
 using LibCpp2IL;
 using LibCpp2IL.Metadata;
 using PhigrosLibraryCSharp.CloudSave;
 using PhiInfo.Core.Models;
 using PhiInfo.Core.Models.Information;
+using System.Collections.Frozen;
 
 namespace PhiInfo.Core.Extraction;
 
 /// <summary>
 /// Extracts information from Phigros assets. Please see warning at 
-/// <see cref="InfoExtractor(Stream, Stream, Stream?, Stream?, byte[], byte[], Stream)"/>.
+/// <see cref="InfoExtractor(AssetsManager, BundleFileInstance, Action)"/>.
 /// </summary>
 public class InfoExtractor : IDisposable
 {
+	private record struct CollectedMonoBehaviour(AssetsFileInstance Instance, AssetTypeValueField Behaviour);
 
-	private readonly AssetsFile _level0;
-	private readonly AssetsFile? _sharedAssets22;
-	private readonly AssetsFile? _level22;
-	private readonly MonoBehaviourFinder _monoBehaviourFinder;
+	private const string GameInformationBehaviourName = "GameInformation";
+	private const string CollectionDatabaseBehaviourName = "CollectionDatabase";
+	private const string SaturnOSControlBehaviourName = "SaturnOSControl";
+	private const string GetCollectionControlBehaviourName = "GetCollectionControl";
+	private const string TipsProviderBehaviourName = "TipsProvider";
 
-	private readonly AssetsFileReader _level0Reader;
-	private readonly AssetsFileReader? _sharedAssets22Reader;
-	private readonly AssetsFileReader? _level22Reader;
+	private static readonly FrozenSet<string> _monoBehaviourNames = [
+		GameInformationBehaviourName,
+		CollectionDatabaseBehaviourName,
+		SaturnOSControlBehaviourName,
+		GetCollectionControlBehaviourName,
+		TipsProviderBehaviourName
+	];
+
+	private readonly Dictionary<string, CollectedMonoBehaviour> _collectedMonoBehaviours;
+	private readonly AssetsManager _assetsManager;
+	private readonly MonoBehaviourFinder _behaviourFinder;
+	private readonly BundleFileInstance _dataUnity3d;
+	private readonly Action _extraDisposer;
 
 	/// <summary>
 	/// Checks if this instance is disposed. Accessing any method after this is true 
 	/// may cause <see cref="ObjectDisposedException"/> or <see cref="NullReferenceException"/>.
 	/// </summary>
 	public bool Disposed { get; private set; }
-
-	/// <summary>
-	/// Gets whether collection data can be extracted (requires sharedassets22 and level22).
-	/// </summary>
-	public bool CanExtractCollections => this._sharedAssets22 is not null && this._level22 is not null;
 
 	/// <summary>
 	/// Extracts collections and tips in the specified language. Default is Chinese.
@@ -46,53 +55,43 @@ public class InfoExtractor : IDisposable
 	/// only one instance of this class and reuse it to extract all information you need, or new multiple 
 	/// instances sequentially.
 	/// 
-	/// All streams passed to this constructor should be seekable and support reading, and they will be 
-	/// disposed when the InfoExtractor is disposed. The <paramref name="sharedAssets22"/> stream can be null, but if it is null, 
-	/// collection data cannot be extracted.
+	/// Resources will be disposed when the InfoExtractor is disposed.
 	/// </summary>
-	/// <param name="globalGameManagers">The <c>assets/bin/Data/globalgamemanagers.assets</c> file.</param>
-	/// <param name="level0">The <c>assets/bin/Data/level0</c> file.</param>
-	/// <param name="sharedAssets22">The <c>assets/bin/Data/sharedassets22.assets.split*</c> files merged. 
-	/// If not supplied collections cannot be extracted.</param>
-	/// <param name="level22">The <c>assets/bin/Data/level22</c> file. 
-	/// If not supplied collections cannot be extracted.</param>
-	/// <param name="il2CppSo">The <c>lib/arm64-v8a/libil2cpp.so</c> file.</param>
-	/// <param name="globalMetadata">The <c>assets/bin/Data/Managed/Metadata/global-metadata.dat</c> file.</param>
-	/// <param name="classDataTPK">Class database file. Can be obtained 
-	/// <a href="https://nightly.link/AssetRipper/Tpk/workflows/type_tree_tpk/master/uncompressed_file.zip">here</a>.</param>
+	/// <param name="manager">The assets manager containing loaded assets.</param>
+	/// <param name="dataUnity3d">The data.unity3d bundle file instance.</param>
+	/// <param name="disposer">A custom dispose action for cleanup of resources like streams.</param>
 	public InfoExtractor(
-		Stream globalGameManagers,
-		Stream level0,
-		Stream? sharedAssets22,
-		Stream? level22,
-		byte[] il2CppSo,
-		byte[] globalMetadata,
-		Stream classDataTPK)
+		AssetsManager manager,
+		BundleFileInstance dataUnity3d,
+		Action disposer)
 	{
-		AssetsFileReader level0Reader = new(level0);
-		this._level0Reader = level0Reader;
-		this._level0 = new();
-		this._level0.Read(level0Reader);
+		this._assetsManager = manager;
+		this._behaviourFinder = new(dataUnity3d, manager);
+		this._dataUnity3d = dataUnity3d;
+		this._collectedMonoBehaviours = CollectMonoBehaviours(manager, dataUnity3d, this._behaviourFinder);
+		this._extraDisposer = disposer;
+	}
 
-		if (sharedAssets22 is not null && level22 is not null)
+	private static Dictionary<string, CollectedMonoBehaviour> CollectMonoBehaviours(AssetsManager manager, BundleFileInstance dataUnity3d, MonoBehaviourFinder finder)
+	{
+		Dictionary<string, CollectedMonoBehaviour> result = [];
+		foreach (AssetBundleDirectoryInfo? folder in dataUnity3d.file.BlockAndDirInfo.DirectoryInfos)
 		{
-			AssetsFileReader sharedAssets22Reader = new(sharedAssets22);
-			this._sharedAssets22Reader = sharedAssets22Reader;
-			this._sharedAssets22 = new();
-			this._sharedAssets22.Read(sharedAssets22Reader);
+			AssetsFileInstance assetFile = manager.LoadAssetsFileFromBundle(dataUnity3d, folder.Name);
+			if (assetFile is null) continue;
 
-			AssetsFileReader level22Reader = new(level22);
-			this._level22Reader = level22Reader;
-			this._level22 = new();
-			this._level22.Read(level22Reader);
+			foreach (AssetFileInfo? behaviour in assetFile.file.GetAssetsOfType(AssetClassID.MonoBehaviour))
+			{
+				MonoBehaviourInfo? realBehaviour = finder.TryGetMonoBehaviourInfo(assetFile.file, behaviour, x => _monoBehaviourNames.Contains(x["m_Name"]?.AsString ?? ""));
+				if (realBehaviour is null) continue;
+
+				// here we just override the previous one if there are multiple with the same name, because we don't expect that to happen
+				// even it happens, it will be likely that the behaviour is not the one we want, critical behaviours should be unique
+				result[realBehaviour.GameManagerInfo["m_Name"]?.AsString ?? ""] = new(assetFile, realBehaviour.Behaviour);
+			}
 		}
 
-		this._monoBehaviourFinder = new MonoBehaviourFinder(
-			globalGameManagers,
-			il2CppSo,
-			globalMetadata,
-			classDataTPK
-		);
+		return result;
 	}
 
 	private static Il2CppFieldDefinition GetFieldInConstantsClass(string fieldName)
@@ -116,43 +115,19 @@ public class InfoExtractor : IDisposable
 
 	/// <summary>
 	/// Constructs an <see cref="InfoExtractor"/> from package streams. Please see warning at 
-	/// <see cref="InfoExtractor(Stream, Stream, Stream?, Stream?, byte[], byte[], Stream)" />.
+	/// <see cref="InfoExtractor(AssetsManager, BundleFileInstance, Action)" />.
 	/// 
 	/// Searches through all provided packages to find the required assets.
 	/// </summary>
-	/// <param name="classDataTPK">Class data database file. See <see cref="InfoExtractor(Stream, Stream, Stream?, Stream?, byte[], byte[], Stream)"/> 
-	/// classDataTpk param.</param>
+	/// <param name="classDataTPK">Class data database file. Can be obtained 
+	/// <a href="https://nightly.link/AssetRipper/Tpk/workflows/type_tree_tpk/master/uncompressed_file.zip">here</a>.</param>
+	/// <param name="locator">A multi-package file locator to search for required assets.</param>
 	/// <param name="ct">Cancellation token.</param>
-	/// <param name="packages">Package streams (APK, OBB, split APKs) to search for required assets.</param>
 	/// <returns>A constructed <see cref="InfoExtractor"/>.</returns>
-	public static async Task<InfoExtractor> FromPackagesAsync(Stream classDataTPK, CancellationToken ct = default, params Stream[] packages)
+	public static async Task<InfoExtractor> FromPackagesAsync(Stream classDataTPK, MultiPackageFileLocator locator, CancellationToken ct = default)
 	{
-		(Stream GlobalGameManagers, Stream Level0, byte[] Il2CppSo, byte[] GlobalMetadata) =
-			await PhigrosAssetHelper.GetInformationExtractionRequiredDataAsync(ct, packages);
-
-		Stream? sharedAssets22 = null;
-		Stream? level22 = null;
-
-		try
-		{
-			sharedAssets22 = await PhigrosAssetHelper.GetSharedAssets22FromPackagesAsync(ct, packages);
-			level22 = await PhigrosAssetHelper.GetLevel22FromPackagesAsync(ct, packages);
-		}
-		catch (FileNotFoundException)
-		{
-			// These are optional for collection extraction
-			// If not found, collection extraction will fail but other extraction will work
-		}
-
-		return new InfoExtractor(
-			GlobalGameManagers,
-			Level0,
-			sharedAssets22,
-			level22,
-			Il2CppSo,
-			GlobalMetadata,
-			classDataTPK
-		);
+		(AssetsManager? manager, BundleFileInstance? bundle, Action? disposer) = await locator.ExtractDataUnity3DFile(classDataTPK);
+		return new(manager, bundle, disposer);
 	}
 
 	/// <inheritdoc/>
@@ -163,13 +138,9 @@ public class InfoExtractor : IDisposable
 
 		GC.SuppressFinalize(this);
 
-		this._level0Reader.Dispose();
-		this._level22Reader?.Dispose();
-		this._sharedAssets22Reader?.Dispose();
-		this._level0.Close();
-		this._level22?.Close();
-		this._sharedAssets22?.Close();
-		this._monoBehaviourFinder.Dispose();
+		// here we don't unload dataUnity3d because it may not be managed by this
+		this._behaviourFinder.Dispose();
+		this._extraDisposer.Invoke();
 	}
 
 #pragma warning disable CA1822 // Mark members as static
@@ -241,7 +212,7 @@ public class InfoExtractor : IDisposable
 	{
 		List<SongInfo> result = [];
 
-		AssetTypeValueField gameInfoField = this._monoBehaviourFinder.FindMonoBehaviour(this._level0, "GameInformation");
+		AssetTypeValueField gameInfoField = this._collectedMonoBehaviours["GameInformation"].Behaviour;
 		AssetTypeValueField songField = gameInfoField["song"];
 
 		foreach (AssetTypeValueField songArrayField in songField)
@@ -300,11 +271,8 @@ public class InfoExtractor : IDisposable
 	/// <exception cref="InvalidOperationException">Thrown if sharedassets22 is not supplied in constructor.</exception>
 	public List<Folder> ExtractCollections()
 	{
-		if (this._sharedAssets22 is null || this._level22 is null)
-			throw new InvalidOperationException("Sharedassets22 asset is required to extract collection data");
-
-		AssetTypeValueField collectionDatabase = this._monoBehaviourFinder.FindMonoBehaviour(this._sharedAssets22, "CollectionDatabase");
-		AssetTypeValueField saturnOSControl = this._monoBehaviourFinder.FindMonoBehaviour(this._level22, "SaturnOSControl");
+		AssetTypeValueField collectionDatabase = this._collectedMonoBehaviours["CollectionDatabase"].Behaviour;
+		AssetTypeValueField saturnOSControl = this._collectedMonoBehaviours["SaturnOSControl"].Behaviour;
 
 		FileItem[] allFiles = collectionDatabase["items"]["Array"]
 			.Select(x => new FileItem(
@@ -375,7 +343,7 @@ public class InfoExtractor : IDisposable
 	/// <returns>A list of avatar information.</returns>
 	public List<Avatar> ExtractAvatars()
 	{
-		AssetTypeValueField avatarField = this._monoBehaviourFinder.FindMonoBehaviour(this._level0, "GetCollectionControl");
+		AssetTypeValueField avatarField = this._collectedMonoBehaviours["GetCollectionControl"].Behaviour;
 
 		return avatarField["avatars"]["Array"]
 			.Select(x => new Avatar(x["name"].AsString, x["addressableKey"].AsString))
@@ -389,7 +357,7 @@ public class InfoExtractor : IDisposable
 	public List<string> ExtractTips()
 	{
 
-		AssetTypeValueField tipsField = this._monoBehaviourFinder.FindMonoBehaviour(this._level0, "TipsProvider");
+		AssetTypeValueField tipsField = this._collectedMonoBehaviours["TipsProvider"].Behaviour;
 
 		AssetTypeValueField tipsArray = tipsField["tips"]["Array"];
 		AssetTypeValueField? tipsTargetLang = tipsArray
@@ -412,7 +380,7 @@ public class InfoExtractor : IDisposable
 	{
 		List<ChapterInfo> result = [];
 
-		AssetTypeValueField chapterField = this._monoBehaviourFinder.FindMonoBehaviour(this._level0, "GameInformation");
+		AssetTypeValueField chapterField = this._collectedMonoBehaviours["GameInformation"].Behaviour;
 
 		AssetTypeValueField chaptersArray = chapterField["chapters"]["Array"];
 

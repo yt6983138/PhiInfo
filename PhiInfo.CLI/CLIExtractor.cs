@@ -69,20 +69,16 @@ public class CLIExtractor
 	{
 		InfoExtractor? infoExtractor = null;
 		AddressableBundleExtractor? addressableBundleExtractor = null;
+		MultiPackageFileLocator locator = new(option.Packages.ToArray());
 
 		if (option.ClassDataFile is not null && option.Packages.Count > 0)
 		{
-			infoExtractor = await InfoExtractor.FromPackagesAsync(
-				option.ClassDataFile,
-				default,
-				option.Packages.ToArray());
+			infoExtractor = await InfoExtractor.FromPackagesAsync(option.ClassDataFile, locator);
 		}
 
 		if (option.Packages.Count > 0)
 		{
-			addressableBundleExtractor = await AddressableBundleExtractor.FromPackagesAsync(
-				default,
-				option.Packages.ToArray());
+			addressableBundleExtractor = await AddressableBundleExtractor.FromPackagesAsync(locator);
 		}
 
 		return new(infoExtractor, addressableBundleExtractor, option, logger);
@@ -118,16 +114,8 @@ public class CLIExtractor
 		InfoExtractor infoExtractor = this.RequireInfoExtractor();
 		infoExtractor.ExtractLanguage = lang;
 
-		List<Folder>? collections = null;
-		if (!infoExtractor.CanExtractCollections)
-		{
-			this._logger.LogWarning("Collection cannot be extracted because required assets (sharedassets22/level22) were not found in the provided packages.");
-		}
-		else
-		{
-			this._logger.LogInformation("Extracting Collection in {lang}...", lang);
-			collections = infoExtractor.ExtractCollections();
-		}
+		this._logger.LogInformation("Extracting Collection in {lang}...", lang);
+		List<Folder>? collections = infoExtractor.ExtractCollections();
 
 		this._logger.LogInformation("Extracting Tips in {lang}...", lang);
 		return new(collections, infoExtractor.ExtractTips());

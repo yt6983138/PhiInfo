@@ -12,9 +12,11 @@ public sealed class ExtractTest
 	public async Task Information()
 	{
 		Helper.EnsureWorkingDirectory();
+		MultiPackageFileLocator locator = new(Helper.GetTestPackageStreams());
 
 		using InfoExtractor rawExtractor = await InfoExtractor.FromPackagesAsync(
-			Helper.GetClassDataTPKStream(), default, Helper.GetTestPackageStreams());
+			Helper.GetClassDataTPKStream(),
+			locator);
 
 		List<SongInfo> songs = rawExtractor.ExtractSongInfo();
 		List<Folder> collections = rawExtractor.ExtractCollections();
@@ -40,7 +42,8 @@ public sealed class ExtractTest
 		//	File.OpenRead(Helper.TestObbPath),
 		//	File.OpenRead(Helper.TestClassDataTPKPath));
 
-		AddressableBundleExtractor assetExtractor = await AddressableBundleExtractor.FromPackagesAsync(default, Helper.GetTestPackageStreams());
+		MultiPackageFileLocator locator = new(Helper.GetTestPackageStreams());
+		AddressableBundleExtractor assetExtractor = await AddressableBundleExtractor.FromPackagesAsync(locator);
 
 		Console.WriteLine("Assets in catalog:");
 		Console.WriteLine(string.Join('\n', assetExtractor.ListMeaningfulAssetPathsInCatalog()));

@@ -75,20 +75,6 @@ public class CatalogParser
 	}
 
 	/// <summary>
-	/// Creates a <see cref="CatalogParser"/> from package streams.
-	/// </summary>
-	/// <param name="packages">Package streams (APK, OBB, split APKs) to search for catalog.json.</param>
-	/// <param name="ct">A cancellation token to observe while waiting for the task to complete.</param>
-	/// <returns>A new <see cref="CatalogParser"/> instance.</returns>
-	/// <exception cref="ArgumentException">Thrown when the packages are invalid or catalog cannot be extracted.</exception>
-	/// <exception cref="FileNotFoundException">Thrown if catalog.json is not found in any package.</exception>
-	public static async Task<CatalogParser> FromPackagesAsync(CancellationToken ct = default, params Stream[] packages)
-	{
-		using Stream catalogStream = await PhigrosAssetHelper.GetCatalogStreamFromPackagesAsync(packages);
-		return await FromJsonAsync(catalogStream, ct);
-	}
-
-	/// <summary>
 	/// Try to get a catalog value by key. This is an O(n) operation, 
 	/// so it's not recommended to call this method frequently. Use 
 	/// <see cref="TryGet(string)"/> if you want to get a value by 
@@ -150,8 +136,8 @@ public class CatalogParser
 		using BinaryReader entryReader = new(new MemoryStream(entryData));
 
 		int bucketCount = bucketReader.ReadInt32();
-		List<CatalogEntry> table = new(bucketCount); // preallocate list, ResolveReferences will add
-													 // so we can't just use Memory<T> or something like that
+		List<CatalogEntry> table = [with(bucketCount)]; // preallocate list, ResolveReferences will add
+														// so we can't just use Memory<T> or something like that
 		for (int i = 0; i < bucketCount; i++)
 		{
 			int keyPos = bucketReader.ReadInt32();

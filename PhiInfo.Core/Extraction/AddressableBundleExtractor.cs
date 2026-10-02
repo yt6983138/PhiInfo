@@ -35,7 +35,7 @@ public class AddressableBundleExtractor : IDisposable
 	/// <summary>
 	/// Creates an instance of this class with a <see cref="CatalogParser"/> and a <see cref="BundleStreamFactory"/>. 
 	/// Recommend to use the static methods in <see cref="PhigrosAssetHelper"/> to create these parameters, 
-	/// or use the static method like <see cref="FromPackagesAsync(CancellationToken, Stream[])"/> to create an instance of this class directly.
+	/// or use the static method like <see cref="FromPackagesAsync(MultiPackageFileLocator, CancellationToken)"/> to create an instance of this class directly.
 	/// </summary>
 	/// <param name="catalogParser">A catalog parser.</param>
 	/// <param name="bundleStreamFactory">A bundle stream factory.</param>
@@ -53,13 +53,13 @@ public class AddressableBundleExtractor : IDisposable
 	/// 
 	/// Searches through all provided packages to find the catalog and bundle files.
 	/// </summary>
-	/// <param name="packages">Package streams (APK, OBB, split APKs) to search for catalog and bundle files.</param>
+	/// <param name="locator">A multi-package file locator to search for catalog and bundle files.</param>
 	/// <param name="ct">Cancellation token.</param>
 	/// <returns>A new instance of <see cref="AddressableBundleExtractor"/>.</returns>
-	public static async Task<AddressableBundleExtractor> FromPackagesAsync(CancellationToken ct = default, params Stream[] packages)
+	public static async Task<AddressableBundleExtractor> FromPackagesAsync(MultiPackageFileLocator locator, CancellationToken ct = default)
 	{
-		CatalogParser catalogParser = await CatalogParser.FromPackagesAsync(ct, packages);
-		(BundleStreamFactory? factory, Action? disposer) = PhigrosAssetHelper.CreateBundleFactoryFromPackages(packages);
+		CatalogParser catalogParser = await CatalogParser.FromJsonAsync(await locator.GetCatalogStream(ct), ct);
+		(BundleStreamFactory? factory, Action? disposer) = locator.CreateBundleFactory();
 		return new(catalogParser, factory, disposer);
 	}
 

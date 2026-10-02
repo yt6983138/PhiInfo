@@ -1,5 +1,4 @@
 ﻿using AssetsTools.NET;
-using AssetsTools.NET.Cpp2IL;
 using AssetsTools.NET.Extra;
 using LibCpp2IL;
 using System.Diagnostics.CodeAnalysis;
@@ -7,18 +6,21 @@ using System.Diagnostics.CodeAnalysis;
 namespace PhiInfo.Core.Extraction;
 
 /// <summary>
+/// Represents a MonoBehaviour asset with its associated script and game manager information.
+/// </summary>
+/// <param name="MonoScriptInfo">The asset file info for the MonoScript.</param>
+/// <param name="GameManagerInfo">The type value field containing game manager data.</param>
+/// <param name="Behaviour">The type value field containing the MonoBehaviour data.</param>
+public record class MonoBehaviourInfo(AssetFileInfo MonoScriptInfo, AssetTypeValueField GameManagerInfo, AssetTypeValueField Behaviour);
+/// <summary>
 /// Finds and reads <c>MonoBehaviour</c> instances from Unity asset files.
 /// </summary>
 public class MonoBehaviourFinder : IDisposable
 {
 	private bool _disposed;
 
-	private readonly AssetsFile _globalGameManagers = new();
-	private readonly ClassDatabaseFile _classDatabase;
-
-	private readonly AssetsFileReader _globalGameManagersReader;
-
-	private readonly Cpp2IlTempGenerator _templateGenerator;
+	private readonly AssetsFileInstance _globalGameManagers;
+	private readonly AssetsManager _assetsManager;
 
 	/// <summary>
 	/// Warning: Newing multiple instances of this class (concurrently) may cause unexpected behaviour,
@@ -26,46 +28,26 @@ public class MonoBehaviourFinder : IDisposable
 	/// which may cause some static fields to be overridden. Recommend to new only one instance of this 
 	/// class and reuse it to extract all information you need, or new multiple instances sequentially.
 	/// 
-	/// All streams passed to this constructor should be seekable and support reading, and they will be 
-	/// disposed when the <see cref="MonoBehaviourFinder"/> is disposed.
+	/// Resources will be managed by the provided <see cref="AssetsManager"/>.
 	/// </summary>
-	/// <param name="globalGameManagersAsset">The <c>assets/bin/Data/globalgamemanagers.assets</c> file. (In apk)</param>
-	/// <param name="il2CppBinary">The <c>lib/arm64-v8a/libil2cpp.so</c> file. (In apk)</param>
-	/// <param name="globalMetadataBinary">The <c>assets/bin/Data/Managed/Metadata/global-metadata.dat</c> file. (In apk)</param>
-	/// <param name="classDataTPK">Class database file. Can be obtained 
-	/// <a href="https://nightly.link/AssetRipper/Tpk/workflows/type_tree_tpk/master/uncompressed_file.zip">here</a>.</param>
+	/// <param name="dataUnity3d">The data.unity3d bundle file instance.</param>
+	/// <param name="manager">The assets manager containing loaded assets and class database.</param>
 	public MonoBehaviourFinder(
-		Stream globalGameManagersAsset,
-		byte[] il2CppBinary,
-		byte[] globalMetadataBinary,
-		Stream classDataTPK)
+		BundleFileInstance dataUnity3d,
+		AssetsManager manager)
 	{
-		AssetsFileReader globalGameManagersReader = new(globalGameManagersAsset);
-		this._globalGameManagersReader = globalGameManagersReader;
-		this._globalGameManagers.Read(globalGameManagersReader);
-
-		ClassPackageFile classPackage = new();
-		using AssetsFileReader classDataTPKReader = new(classDataTPK);
-		classPackage.Read(classDataTPKReader);
-
-		this._classDatabase = classPackage.GetClassDatabase(this._globalGameManagers.Metadata.UnityVersion);
-
-		this._templateGenerator = new Cpp2IlTempGenerator(globalMetadataBinary, il2CppBinary);
-		this._templateGenerator.SetUnityVersion(new UnityVersion(this._globalGameManagers.Metadata.UnityVersion));
-		this._templateGenerator.InitializeCpp2IL();
+		this._globalGameManagers = manager.LoadAssetsFileFromBundle(dataUnity3d, "globalgamemanagers.assets", true);
+		this._assetsManager = manager;
 	}
 
 	/// <inheritdoc/>
 	public void Dispose()
 	{
-		if (this._disposed) return;
-		this._disposed = true;
+		if (Interlocked.Exchange(ref this._disposed, true)) return;
 
 		GC.SuppressFinalize(this);
 
-		this._globalGameManagersReader.Dispose();
-		this._globalGameManagers.Close();
-		this._templateGenerator.Dispose();
+		this._assetsManager.UnloadAssetsFile(this._globalGameManagers);
 	}
 
 	private AssetTypeValueField GetBaseField(
@@ -114,12 +96,12 @@ public class MonoBehaviourFinder : IDisposable
 		// 2. 回退到 ClassDatabase
 		if (baseField == null)
 		{
-			ClassDatabaseType cldbType = this._classDatabase.FindAssetClassByID(info.TypeId);
+			ClassDatabaseType cldbType = this._assetsManager.ClassDatabase.FindAssetClassByID(info.TypeId);
 			if (cldbType == null)
 				return null;
 
 			baseField = new AssetTypeTemplateField();
-			baseField.FromClassDatabase(this._classDatabase, cldbType);
+			baseField.FromClassDatabase(this._assetsManager.ClassDatabase, cldbType);
 		}
 
 		// 3. MonoBehaviour: 使用 MonoTempGenerator 补充字段
@@ -147,7 +129,7 @@ public class MonoBehaviourFinder : IDisposable
 			}
 			else if (scriptPtr.FileId == 1)
 			{
-				monoScriptFile = this._globalGameManagers;
+				monoScriptFile = this._globalGameManagers.file;
 			}
 			else
 			{
@@ -166,7 +148,7 @@ public class MonoBehaviourFinder : IDisposable
 			if (assemblyName.EndsWith(".dll"))
 				assemblyName = assemblyName[..^4];
 
-			AssetTypeTemplateField newBase = this._templateGenerator.GetTemplateField(
+			AssetTypeTemplateField newBase = this._assetsManager.MonoTempGenerator.GetTemplateField(
 					baseField,
 					assemblyName,
 					nameSpace,
@@ -176,7 +158,7 @@ public class MonoBehaviourFinder : IDisposable
 			if (newBase != null)
 				baseField = newBase;
 
-			OutAndReset:
+		OutAndReset:
 			// 恢复原始位置
 			reader.Position = originalPosition;
 		}
@@ -221,6 +203,38 @@ public class MonoBehaviourFinder : IDisposable
 	}
 
 	/// <summary>
+	/// Attempts to get MonoBehaviour information from an asset file.
+	/// </summary>
+	/// <param name="file">The asset file to search.</param>
+	/// <param name="info">The asset file info for the MonoBehaviour.</param>
+	/// <param name="filter">Optional filter function to match specific MonoBehaviours.</param>
+	/// <returns>The MonoBehaviour information if found and passes the filter, otherwise <see langword="null"/>.</returns>
+	public MonoBehaviourInfo? TryGetMonoBehaviourInfo(AssetsFile file, AssetFileInfo info, Func<AssetTypeValueField, bool>? filter = null)
+	{
+		if (info.TypeId != (int)AssetClassID.MonoBehaviour)
+			return null;
+
+		AssetTypeValueField baseField = this.GetBaseField(file, info, false);
+
+		AssetTypeValueField scriptField = baseField["m_Script"];
+		if (scriptField == null) return null;
+
+		long msId = scriptField["m_PathID"].AsLong;
+		if (msId == 0) return null;
+
+		AssetFileInfo monoInfo = this._globalGameManagers.file.GetAssetInfo(msId);
+		if (monoInfo == null) return null;
+
+		AssetTypeValueField msBase = this.GetBaseField(this._globalGameManagers.file, monoInfo, false);
+
+		if (filter?.Invoke(msBase) != true)
+			return null;
+
+		AssetTypeValueField behaviour = this.GetBaseField(file, info, true);
+		return new(monoInfo, msBase, behaviour);
+	}
+
+	/// <summary>
 	/// Attempts to find a <c>MonoBehaviour</c> by its associated script name.
 	/// </summary>
 	/// <param name="file">The asset file to search.</param>
@@ -234,28 +248,10 @@ public class MonoBehaviourFinder : IDisposable
 
 		foreach (AssetFileInfo? info in file.AssetInfos)
 		{
-			if (info.TypeId != (int)AssetClassID.MonoBehaviour)
-				continue;
+			MonoBehaviourInfo? behaviourInfo = this.TryGetMonoBehaviourInfo(file, info);
+			if (behaviourInfo is null || behaviourInfo.GameManagerInfo["m_Name"]?.AsString != name) continue;
 
-			AssetTypeValueField baseField = this.GetBaseField(file, info, false);
-
-			AssetTypeValueField scriptField = baseField["m_Script"];
-			if (scriptField == null)
-				continue;
-
-			long msId = scriptField["m_PathID"].AsLong;
-			if (msId == 0)
-				continue;
-
-			AssetFileInfo monoInfo = this._globalGameManagers.GetAssetInfo(msId);
-			if (monoInfo == null)
-				continue;
-
-			AssetTypeValueField msBase = this.GetBaseField(this._globalGameManagers, monoInfo, false);
-			string? msName = msBase["m_Name"]?.AsString;
-
-			if (msName == name)
-				return this.GetBaseField(file, info, true);
+			return behaviourInfo.Behaviour;
 		}
 
 		return null;
