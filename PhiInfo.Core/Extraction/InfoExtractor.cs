@@ -6,6 +6,7 @@ using PhigrosLibraryCSharp.CloudSave;
 using PhiInfo.Core.Models;
 using PhiInfo.Core.Models.Information;
 using System.Collections.Frozen;
+using System.Numerics;
 
 namespace PhiInfo.Core.Extraction;
 
@@ -226,9 +227,9 @@ public class InfoExtractor : IDisposable
 				AssetTypeValueField difficultiesArray = song["difficulty"]["Array"];
 
 				// it is unclear why they have a separate field just for checking if there is a different music or cover and not just check if its default
-				Difficulty previewClipDifficulty = song["hasDifferentMusic"].AsBool ? (Difficulty)song["previewClipDifficulty"].AsInt : default;
-				Difficulty differentMusic = song["hasDifferentMusic"].AsBool ? (Difficulty)song["differentMusic"].AsInt : default;
-				Difficulty differentCover = song["hasDifferentCover"].AsBool ? (Difficulty)song["differentCover"].AsInt : default;
+				DifficultyUnlockFlag previewClipDifficulty = song["hasDifferentMusic"].AsBool ? (DifficultyUnlockFlag)song["previewClipDifficulty"].AsInt : default;
+				DifficultyUnlockFlag differentMusic = song["hasDifferentMusic"].AsBool ? (DifficultyUnlockFlag)song["differentMusic"].AsInt : default;
+				DifficultyUnlockFlag differentCover = song["hasDifferentCover"].AsBool ? (DifficultyUnlockFlag)song["differentCover"].AsInt : default;
 
 				// no multi bit
 				if (previewClipDifficulty != default && !Enum.IsDefined(previewClipDifficulty))
@@ -245,11 +246,12 @@ public class InfoExtractor : IDisposable
 
 					string charter = chartersArray[i].AsString;
 
+					DifficultyUnlockFlag currentDifficultyFlag = (DifficultyUnlockFlag)(1 << (int)difficulty);
 					levelsDict[difficulty] = new SongLevel(
 						charter,
 						(float)Math.Round(diff, 1),
-						differentMusic.HasFlag(difficulty),
-						differentCover.HasFlag(difficulty));
+						differentMusic.HasFlag(currentDifficultyFlag),
+						differentCover.HasFlag(currentDifficultyFlag));
 				}
 
 				if (levelsDict.Count == 0) continue;
@@ -264,7 +266,7 @@ public class InfoExtractor : IDisposable
 					Math.Round(song["previewTime"].AsDouble, 2),
 					Math.Round(song["previewEndTime"].AsDouble, 2),
 					!cnLimitedField.IsDummy && cnLimitedField.AsBool,
-					previewClipDifficulty,
+					previewClipDifficulty == default ? null : (Difficulty)BitOperations.Log2((uint)previewClipDifficulty),
 					levelsDict));
 			}
 		}

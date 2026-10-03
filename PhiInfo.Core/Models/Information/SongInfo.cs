@@ -25,7 +25,7 @@ public record SongInfo(
 	double PreviewStartTimeSeconds,
 	double PreviewEndTimeSeconds,
 	bool IsCNLimited,
-	Difficulty PreviewClipDifficulty,
+	Difficulty? PreviewClipDifficulty,
 	Dictionary<Difficulty, SongLevel> Levels)
 {
 
