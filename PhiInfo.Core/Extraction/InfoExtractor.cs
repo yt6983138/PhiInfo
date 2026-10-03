@@ -225,6 +225,15 @@ public class InfoExtractor : IDisposable
 				AssetTypeValueField chartersArray = song["charter"]["Array"];
 				AssetTypeValueField difficultiesArray = song["difficulty"]["Array"];
 
+				// it is unclear why they have a separate field just for checking if there is a different music or cover and not just check if its default
+				Difficulty previewClipDifficulty = song["hasDifferentMusic"].AsBool ? (Difficulty)song["previewClipDifficulty"].AsInt : default;
+				Difficulty differentMusic = song["hasDifferentMusic"].AsBool ? (Difficulty)song["differentMusic"].AsInt : default;
+				Difficulty differentCover = song["hasDifferentCover"].AsBool ? (Difficulty)song["differentCover"].AsInt : default;
+
+				// no multi bit
+				if (previewClipDifficulty != default && !Enum.IsDefined(previewClipDifficulty))
+					throw new InvalidDataException($"Invalid preview clip difficulty: {previewClipDifficulty}");
+
 				Dictionary<Difficulty, SongLevel> levelsDict = [];
 				for (int i = 0; i < difficultiesArray.Children.Count; i++)
 				{
@@ -238,8 +247,9 @@ public class InfoExtractor : IDisposable
 
 					levelsDict[difficulty] = new SongLevel(
 						charter,
-						(float)Math.Round(diff, 1)
-					);
+						(float)Math.Round(diff, 1),
+						differentMusic.HasFlag(difficulty),
+						differentCover.HasFlag(difficulty));
 				}
 
 				if (levelsDict.Count == 0) continue;
@@ -254,8 +264,8 @@ public class InfoExtractor : IDisposable
 					Math.Round(song["previewTime"].AsDouble, 2),
 					Math.Round(song["previewEndTime"].AsDouble, 2),
 					!cnLimitedField.IsDummy && cnLimitedField.AsBool,
-					levelsDict
-				));
+					previewClipDifficulty,
+					levelsDict));
 			}
 		}
 

@@ -13,6 +13,8 @@ namespace PhiInfo.Core.Models.Information;
 /// <param name="PreviewStartTimeSeconds">Preview start timestamp (seconds). I.e. <c>40.5</c></param>
 /// <param name="PreviewEndTimeSeconds">Preview end timestamp (seconds). I.e. <c>65.5</c></param>
 /// <param name="IsCNLimited">Whether this song is limited to be only playable in China or not.</param>
+/// <param name="PreviewClipDifficulty">The difficulty level of the preview clip. 
+/// If equals to <see langword="default"/>(<see cref="Difficulty"/>), it uses the default music.</param>
 /// <param name="Levels">Per-difficulty chart metadata.</param>
 public record SongInfo(
 	string Id,
@@ -23,6 +25,7 @@ public record SongInfo(
 	double PreviewStartTimeSeconds,
 	double PreviewEndTimeSeconds,
 	bool IsCNLimited,
+	Difficulty PreviewClipDifficulty,
 	Dictionary<Difficulty, SongLevel> Levels)
 {
 

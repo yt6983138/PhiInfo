@@ -51,10 +51,13 @@ public sealed class ExtractTest
 
 		SixLabors.ImageSharp.Image image = (await assetExtractor.GetImageRawAsync("Assets/Tracks/Glaciaxion.SunsetRay.0/IllustrationLowRes.jpg")).Decode();
 		SixLabors.ImageSharp.Image image2 = (await assetExtractor.GetImageRawAsync("avatar.praw")).Decode();
+		SixLabors.ImageSharp.Image image3 = (await assetExtractor.GetImageRawAsync("Assets/Tracks/WhatdoyouwantmorethanaHappyending.Apo11oHALOprogramft安月名莉子大瀬良あい.0/Illustration.jpg.c9Locked")).Decode();
 		Fmod5Sharp.FmodTypes.FmodSoundBank music = (await assetExtractor.GetMusicRawAsync("Assets/Tracks/DiamondEyes.SYNTHETIC.0/music.wav")).Decode();
 		string chart = (await assetExtractor.GetTextRawAsync("Assets/Tracks/Elúltimobaile.Θ.0/Chart_EZ.json")).Content;
 
 		await image.SaveAsync(File.Open("./TestData/extracted.png", FileMode.Create), new PngEncoder());
+		await image2.SaveAsync(File.Open("./TestData/extracted2.png", FileMode.Create), new PngEncoder());
+		await image3.SaveAsync(File.Open("./TestData/extracted3.png", FileMode.Create), new PngEncoder());
 		File.WriteAllBytes("./TestData/extracted.ogg", FmodVorbisRebuilder.RebuildOggFile(music.Samples[0]));
 		File.WriteAllText("./TestData/extracted.json", chart);
 	}
