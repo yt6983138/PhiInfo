@@ -89,6 +89,10 @@ Example code:
 // etc.
 //
 // For TapTap APKs that aren't split, you can just pass the single APK file.
+//
+// Both Unity data layouts are supported and auto-detected: everything packed in
+// assets/bin/Data/data.unity3d, or loose level0/level1/.../sharedassetsN.assets files
+// (including their .splitN chunks) in assets/bin/Data.
 using Stream baseApk = File.OpenRead("base.apk");
 using Stream unityDataAssetPack = File.OpenRead("split_UnityDataAssetPack.apk");
 using Stream obb = File.OpenRead("main.obb");

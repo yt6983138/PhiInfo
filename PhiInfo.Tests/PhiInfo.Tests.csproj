@@ -13,6 +13,11 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<!-- TestData may contain il2cpp dumps (.cs) which must not be compiled -->
+		<Compile Remove="TestData\**" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<Using Include="Microsoft.VisualStudio.TestTools.UnitTesting" />
 	</ItemGroup>
 

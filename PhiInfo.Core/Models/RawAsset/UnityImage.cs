@@ -62,6 +62,11 @@ public record UnityImage(uint Format, uint Width, uint Height, byte[] Data)
 				Image<Bgra32> img3 = Image.LoadPixelData<Bgra32>(etc, width, height);
 				img3.Mutate(x => x.Flip(FlipMode.Vertical));
 				return img3;
+			case 45:
+				EtcDecoder.DecompressETC2<ColorBGRA<byte>, byte>(this.Data, width, height, out byte[] etc2);
+				Image<Bgra32> img5 = Image.LoadPixelData<Bgra32>(etc2, width, height);
+				img5.Mutate(x => x.Flip(FlipMode.Vertical));
+				return img5;
 			case 47:
 				EtcDecoder.DecompressETC2A8<ColorBGRA<byte>, byte>(this.Data, width, height, out byte[] etc2a8);
 				Image<Bgra32> img4 = Image.LoadPixelData<Bgra32>(etc2a8, width, height);

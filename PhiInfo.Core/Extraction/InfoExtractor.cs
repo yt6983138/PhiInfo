@@ -35,7 +35,6 @@ public class InfoExtractor : IDisposable
 	private readonly Dictionary<string, CollectedMonoBehaviour> _collectedMonoBehaviours;
 	private readonly AssetsManager _assetsManager;
 	private readonly MonoBehaviourFinder _behaviourFinder;
-	private readonly BundleFileInstance _dataUnity3d;
 	private readonly Action _extraDisposer;
 
 	/// <summary>
@@ -65,22 +64,32 @@ public class InfoExtractor : IDisposable
 		AssetsManager manager,
 		BundleFileInstance dataUnity3d,
 		Action disposer)
+		: this(UnityAssetContext.FromBundle(manager, dataUnity3d, disposer))
 	{
-		this._assetsManager = manager;
-		this._behaviourFinder = new(dataUnity3d, manager);
-		this._dataUnity3d = dataUnity3d;
-		this._collectedMonoBehaviours = CollectMonoBehaviours(manager, dataUnity3d, this._behaviourFinder);
-		this._extraDisposer = disposer;
 	}
 
-	private static Dictionary<string, CollectedMonoBehaviour> CollectMonoBehaviours(AssetsManager manager, BundleFileInstance dataUnity3d, MonoBehaviourFinder finder)
+	/// <summary>
+	/// Constructs an <see cref="InfoExtractor"/> from a <see cref="UnityAssetContext"/>, which can describe either 
+	/// the packed (<c>data.unity3d</c>) or the loose (<c>level0</c>, <c>level1</c>...) game file layout. 
+	/// Please see the warning at <see cref="InfoExtractor(AssetsManager, BundleFileInstance, Action)"/>.
+	/// 
+	/// Resources will be disposed when the InfoExtractor is disposed.
+	/// </summary>
+	/// <param name="context">Where the Unity serialized files come from.</param>
+	public InfoExtractor(UnityAssetContext context)
+	{
+		this._assetsManager = context.Manager;
+		this._behaviourFinder = new(context.GlobalGameManagers, context.Manager);
+		this._collectedMonoBehaviours = CollectMonoBehaviours(context, this._behaviourFinder);
+		this._extraDisposer = context.Disposer;
+	}
+
+	private static Dictionary<string, CollectedMonoBehaviour> CollectMonoBehaviours(UnityAssetContext context, MonoBehaviourFinder finder)
 	{
 		Dictionary<string, CollectedMonoBehaviour> result = [];
-		foreach (AssetBundleDirectoryInfo? folder in dataUnity3d.file.BlockAndDirInfo.DirectoryInfos)
+		foreach (AssetsFileInstance assetFile in context.AssetFiles)
 		{
-			AssetsFileInstance assetFile = manager.LoadAssetsFileFromBundle(dataUnity3d, folder.Name);
-			if (assetFile is null) continue;
-
+			bool found = false;
 			foreach (AssetFileInfo? behaviour in assetFile.file.GetAssetsOfType(AssetClassID.MonoBehaviour))
 			{
 				MonoBehaviourInfo? realBehaviour = finder.TryGetMonoBehaviourInfo(assetFile.file, behaviour, x => _monoBehaviourNames.Contains(x["m_Name"]?.AsString ?? ""));
@@ -89,7 +98,12 @@ public class InfoExtractor : IDisposable
 				// here we just override the previous one if there are multiple with the same name, because we don't expect that to happen
 				// even it happens, it will be likely that the behaviour is not the one we want, critical behaviours should be unique
 				result[realBehaviour.GameManagerInfo["m_Name"]?.AsString ?? ""] = new(assetFile, realBehaviour.Behaviour);
+				found = true;
 			}
+
+			// loose layout loads each file into memory, free the ones we don't need (globalgamemanagers is owned by the finder)
+			if (!found && context.UnloadUnusedFiles && assetFile != context.GlobalGameManagers)
+				context.Manager.UnloadAssetsFile(assetFile);
 		}
 
 		return result;
@@ -127,8 +141,8 @@ public class InfoExtractor : IDisposable
 	/// <returns>A constructed <see cref="InfoExtractor"/>.</returns>
 	public static async Task<InfoExtractor> FromPackagesAsync(Stream classDataTPK, MultiPackageFileLocator locator, CancellationToken ct = default)
 	{
-		(AssetsManager? manager, BundleFileInstance? bundle, Action? disposer) = await locator.ExtractDataUnity3DFile(classDataTPK);
-		return new(manager, bundle, disposer);
+		UnityAssetContext context = await locator.LoadUnityAssetsAsync(classDataTPK, ct);
+		return new(context);
 	}
 
 	/// <inheritdoc/>

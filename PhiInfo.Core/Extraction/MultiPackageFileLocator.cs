@@ -2,6 +2,7 @@ using AssetsTools.NET.Cpp2IL;
 using AssetsTools.NET.Extra;
 using Microsoft.IO;
 using System.IO.Compression;
+using System.Text.RegularExpressions;
 
 namespace PhiInfo.Core.Extraction;
 
@@ -10,8 +11,12 @@ namespace PhiInfo.Core.Extraction;
 /// Handles proper disposal of all underlying ZipArchive instances.
 /// Searches through packages in the order provided, returning the first match found.
 /// </summary>
-public class MultiPackageFileLocator : IDisposable
+public partial class MultiPackageFileLocator : IDisposable
 {
+	private const string DataDirectory = "assets/bin/Data/";
+	private const string DataUnity3dPath = DataDirectory + "data.unity3d";
+	private const string GlobalGameManagersName = "globalgamemanagers.assets";
+
 	internal static readonly RecyclableMemoryStreamManager _globalMemoryStreamManager = new();
 
 	private readonly List<ZipArchive> _archives = [];
@@ -115,33 +120,144 @@ public class MultiPackageFileLocator : IDisposable
 	/// <returns>A tuple containing the initialized AssetsManager, BundleFileInstance, and a disposer action for cleanup.</returns>
 	public async Task<(AssetsManager Manager, BundleFileInstance Bundle, Action Disposer)> ExtractDataUnity3DFile(Stream classDataTPK)
 	{
-		const string Path = "assets/bin/Data/data.unity3d";
-
 		AssetsManager manager = new();
 		manager.LoadClassPackage(classDataTPK);
 
 		// here we load the unity3d file first to get the unity version, also return later
-		ZipArchiveEntry entry = await this.GetEntryOrThrowAsync(Path);
+		ZipArchiveEntry entry = await this.GetEntryOrThrowAsync(DataUnity3dPath);
 		using Stream entryStream = await entry.OpenAsync();
 		RecyclableMemoryStream stream = _globalMemoryStreamManager.GetStream(entry.FullName);
 		await entryStream.CopyToAsync(stream);
 		stream.Seek(0, SeekOrigin.Begin);
 
-		BundleFileInstance bundle = manager.LoadBundleFile(stream, Path);
+		BundleFileInstance bundle = manager.LoadBundleFile(stream, DataUnity3dPath);
 
 		AssetsFileInstance dummy = manager.LoadAssetsFileFromBundle(bundle, 0);
 		string version = dummy.file.Metadata.UnityVersion;
 		manager.LoadClassDatabaseFromPackage(version);
 		manager.UnloadAssetsFile(dummy);
 
-		(byte[]? il2cpp, byte[]? metadata) = await this.GetAssemblyDataAsync();
-		Cpp2IlTempGenerator tempGen = new(metadata, il2cpp);
-		tempGen.SetUnityVersion(new UnityVersion(version));
-		tempGen.InitializeCpp2IL();
-		manager.MonoTempGenerator = tempGen;
+		await this.InitializeMonoTempGeneratorAsync(manager, version);
 
 		return (manager, bundle, stream.Dispose);
 	}
+
+	private async Task InitializeMonoTempGeneratorAsync(AssetsManager manager, string unityVersion)
+	{
+		(byte[]? il2cpp, byte[]? metadata) = await this.GetAssemblyDataAsync();
+		Cpp2IlTempGenerator tempGen = new(metadata, il2cpp);
+		tempGen.SetUnityVersion(new UnityVersion(unityVersion));
+		tempGen.InitializeCpp2IL();
+		manager.MonoTempGenerator = tempGen;
+	}
+
+	/// <summary>
+	/// Loads the game's Unity serialized files and initializes AssetsManager with Cpp2IL support, 
+	/// automatically detecting the layout used by the package:
+	/// <list type="bullet">
+	/// <item><description>Packed: everything is inside <c>assets/bin/Data/data.unity3d</c>.</description></item>
+	/// <item><description>Loose: <c>globalgamemanagers.assets</c>, <c>level0</c>, <c>level1</c>... and 
+	/// <c>sharedassetsN.assets</c> (possibly split into <c>.splitN</c> chunks) directly inside 
+	/// <c>assets/bin/Data</c>.</description></item>
+	/// </list>
+	/// </summary>
+	/// <param name="classDataTPK">Class data database file. Can be obtained 
+	/// <a href="https://nightly.link/AssetRipper/Tpk/workflows/type_tree_tpk/master/uncompressed_file.zip">here</a>.</param>
+	/// <param name="ct">Cancellation token.</param>
+	/// <returns>The context to be passed to <see cref="InfoExtractor"/>.</returns>
+	/// <exception cref="FileNotFoundException">Thrown if neither layout is found in any package.</exception>
+	public async Task<UnityAssetContext> LoadUnityAssetsAsync(Stream classDataTPK, CancellationToken ct = default)
+	{
+		if (await this.TryGetEntryAsync(DataUnity3dPath, ct) is not null)
+		{
+			(AssetsManager manager, BundleFileInstance bundle, Action disposer) = await this.ExtractDataUnity3DFile(classDataTPK);
+			return UnityAssetContext.FromBundle(manager, bundle, disposer);
+		}
+
+		return await this.LoadLooseUnityAssetsAsync(classDataTPK, ct);
+	}
+
+	// matches level0, sharedassets22.assets, globalgamemanagers.assets, with an optional .splitN suffix
+	[GeneratedRegex(@"^(?<name>level\d+|sharedassets\d+\.assets|globalgamemanagers\.assets)(?:\.split(?<index>\d+))?$", RegexOptions.CultureInvariant)]
+	private static partial Regex LooseSerializedFileRegex();
+
+	private async Task<UnityAssetContext> LoadLooseUnityAssetsAsync(Stream classDataTPK, CancellationToken ct)
+	{
+		// logical file name -> (split index, entry); a non-split file uses index -1
+		Dictionary<string, List<(int Index, ZipArchiveEntry Entry)>> files = new(StringComparer.Ordinal);
+		foreach (ZipArchiveEntry entry in await this.GetEntriesWithPrefixAsync(DataDirectory, ct))
+		{
+			string relative = entry.FullName[DataDirectory.Length..];
+			Match match = LooseSerializedFileRegex().Match(relative);
+			if (!match.Success) continue;
+
+			string name = match.Groups["name"].Value;
+			int index = match.Groups["index"].Success ? int.Parse(match.Groups["index"].Value) : -1;
+
+			if (!files.TryGetValue(name, out List<(int, ZipArchiveEntry)>? parts))
+				files[name] = parts = [];
+			parts.Add((index, entry));
+		}
+
+		if (!files.ContainsKey(GlobalGameManagersName))
+		{
+			throw new FileNotFoundException(
+				$"Neither {DataUnity3dPath} nor loose Unity files (e.g. {DataDirectory}{GlobalGameManagersName}) " +
+				$"were found in any of the {this._archives.Count} package(s).");
+		}
+
+		AssetsManager manager = new();
+		manager.LoadClassPackage(classDataTPK);
+
+		AssetsFileInstance globalGameManagers = LoadLooseFile(manager, GlobalGameManagersName, files[GlobalGameManagersName]);
+		string version = globalGameManagers.file.Metadata.UnityVersion;
+		manager.LoadClassDatabaseFromPackage(version);
+
+		await this.InitializeMonoTempGeneratorAsync(manager, version);
+
+		// globalgamemanagers first, then levels and shared assets in natural order, loaded one by one to keep memory low
+		IEnumerable<AssetsFileInstance> Enumerate()
+		{
+			yield return globalGameManagers;
+
+			foreach (string name in files.Keys
+				.Where(x => x != GlobalGameManagersName)
+				.OrderBy(x => x.StartsWith("level", StringComparison.Ordinal) ? 0 : 1)
+				.ThenBy(x => int.Parse(DigitsRegex().Match(x).Value)))
+			{
+				yield return LoadLooseFile(manager, name, files[name]);
+			}
+		}
+
+		return new UnityAssetContext(manager, globalGameManagers, Enumerate(), true, () => { });
+	}
+
+	[GeneratedRegex(@"\d+")]
+	private static partial Regex DigitsRegex();
+
+	private static AssetsFileInstance LoadLooseFile(AssetsManager manager, string name, List<(int Index, ZipArchiveEntry Entry)> parts)
+	{
+		RecyclableMemoryStream stream = _globalMemoryStreamManager.GetStream(name);
+		try
+		{
+			// split chunks (.split0, .split1...) must be concatenated in index order
+			foreach ((int _, ZipArchiveEntry entry) in parts.OrderBy(x => x.Index))
+			{
+				using Stream entryStream = entry.Open();
+				entryStream.CopyTo(stream);
+			}
+			stream.Seek(0, SeekOrigin.Begin);
+
+			// no loadDeps: dependencies are resolved from disk, and we only need the MonoBehaviours here
+			return manager.LoadAssetsFile(stream, DataDirectory + name, false);
+		}
+		catch
+		{
+			stream.Dispose();
+			throw;
+		}
+	}
+
 	/// <summary>
 	/// Gets a stream to the catalog.json file from the packages.
 	/// </summary>

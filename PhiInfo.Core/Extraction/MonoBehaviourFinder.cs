@@ -40,6 +40,20 @@ public class MonoBehaviourFinder : IDisposable
 		this._assetsManager = manager;
 	}
 
+	/// <summary>
+	/// Same as <see cref="MonoBehaviourFinder(BundleFileInstance, AssetsManager)"/>, but works with an already loaded 
+	/// <c>globalgamemanagers.assets</c>, so it supports both packed and loose game file layouts.
+	/// </summary>
+	/// <param name="globalGameManagers">The loaded <c>globalgamemanagers.assets</c>.</param>
+	/// <param name="manager">The assets manager containing loaded assets and class database.</param>
+	public MonoBehaviourFinder(
+		AssetsFileInstance globalGameManagers,
+		AssetsManager manager)
+	{
+		this._globalGameManagers = globalGameManagers;
+		this._assetsManager = manager;
+	}
+
 	/// <inheritdoc/>
 	public void Dispose()
 	{
